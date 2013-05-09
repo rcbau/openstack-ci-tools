@@ -4,11 +4,17 @@
 # These events are stored in a mysql database.
 
 import datetime
+import git
 import json
 import MySQLdb
 import urllib
 
 import utils
+
+
+# Valid git_fetched states:
+#   0: not fetched
+#   m: fetch skipped as git repo missing
 
 
 def fetch_log_day(cursor, dt):
@@ -33,11 +39,38 @@ def fetch_log_day(cursor, dt):
     return new
 
 
+def perform_git_fetches(cursor):
+    cursor.execute('select * from patchsets where git_fetched="0";')
+    subcursor = utils.GetCursor()
+
+    for row in cursor:
+        repo_path = os.path.join('/srv/git', row['project'])
+        if not os.path.exists(repo_path):
+            subcursor.execute('update patchsets set git_fetched="m" '
+                              'where id="%s" and number=%d;'
+                              %(row['id'], row['number']))
+            subcursor.execute('commit;')
+            continue
+
+        repo = git.Repo(repo_path)
+        assert repo.bare == False
+        repo.git.checkout('master')
+        repo.git.pull()
+
+        if len(repo.remotes) < 2:
+            repo.create_remote('gerrit',
+                               'https://review.openstack.org/openstack/nova')
+
+        gerrit = repo.remotes.gerrit
+        gerrit.fetch(refspec=row['refurl'])
+        git.checkout('FETCH_HEAD')
+
+
 if __name__ == '__main__':
     cursor = utils.GetCursor()
     now = datetime.datetime.now()
     new = 0
-    
+
     for i in range(7):
         try:
             new += fetch_log_day(cursor, now)
