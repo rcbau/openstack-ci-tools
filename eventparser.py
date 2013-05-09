@@ -60,6 +60,8 @@ def perform_git_fetches(cursor):
 
         repo = git.Repo(repo_path)
         assert repo.bare == False
+        repo.git.checkout('master')
+        repo.git.pull()
 
         files = {}
         print row['refurl']
