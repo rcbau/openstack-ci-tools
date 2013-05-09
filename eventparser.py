@@ -41,8 +41,8 @@ if __name__ == '__main__':
     for i in range(7):
         try:
             new += fetch_log_day(cursor, now)
-        except:
-            pass
+        except Exception, e:
+            print e
 
         now -= datetime.timedelta(days=1)
 
