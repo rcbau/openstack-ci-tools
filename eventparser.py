@@ -7,6 +7,7 @@ import datetime
 import git
 import json
 import MySQLdb
+import os
 import urllib
 
 import utils
@@ -76,4 +77,4 @@ if __name__ == '__main__':
         now -= datetime.timedelta(days=1)
 
     print 'Added %d new patchsets' % new
-
+    perform_git_fetches(cursor)
