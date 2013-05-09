@@ -8,14 +8,19 @@ import git
 import json
 import MySQLdb
 import os
+import re
 import urllib
 
 import utils
 
 
+DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
+
+
 # Valid git_fetched states:
 #   0: not fetched
 #   m: fetch skipped as git repo missing
+#   f: fetched and converted into a list of changed files
 
 
 def fetch_log_day(cursor, dt):
@@ -55,12 +60,26 @@ def perform_git_fetches(cursor):
 
         repo = git.Repo(repo_path)
         assert repo.bare == False
-        repo.git.checkout('master')
-        repo.git.pull()
 
-        repo.git.fetch('https://review.openstack.org/openstack/nova '
-                       'refs/changes/03/28503/1')
-        repo.git.checkout('FETCH_HEAD')
+        files = {}
+        print row['refurl']
+        repo.git.fetch('https://review.openstack.org/%s' %row['project'],
+                       row['refurl'])
+        for line in repo.git.format_patch('-1', '--stdout',
+                                          'FETCH_HEAD').split('\n'):
+            m = DIFF_FILENAME_RE.match(line)
+            if m:
+                files[m.group(1)] = True
+        print '  %d files changed' % len(files)
+
+        for filename in files:
+            subcursor.execute('insert ignore into patchset_files '
+                              '(id, number, filename) values ("%s", %d, "%s");'
+                              %(row['id'], row['number'], filename))
+        subcursor.execute('update patchsets set git_fetched="f" '
+                          'where id="%s" and number=%d;'
+                          %(row['id'], row['number']))
+        subcursor.execute('commit;')
 
 
 if __name__ == '__main__':
