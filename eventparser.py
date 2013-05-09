@@ -57,13 +57,9 @@ def perform_git_fetches(cursor):
         repo.git.checkout('master')
         repo.git.pull()
 
-        if len(repo.remotes) < 2:
-            repo.create_remote('gerrit',
-                               'https://review.openstack.org/openstack/nova')
-
-        gerrit = repo.remotes.gerrit
-        gerrit.fetch(refspec=row['refurl'])
-        git.checkout('FETCH_HEAD')
+        repo.git.fetch('https://review.openstack.org/openstack/nova '
+                       'refs/changes/03/28503/1')
+        repo.git.checkout('FETCH_HEAD')
 
 
 if __name__ == '__main__':
@@ -80,3 +76,4 @@ if __name__ == '__main__':
         now -= datetime.timedelta(days=1)
 
     print 'Added %d new patchsets' % new
+
