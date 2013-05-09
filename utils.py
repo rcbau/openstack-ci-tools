@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+import json
+import MySQLdb
+
 def GetCursor():
     # Read config from a file
     with open('/srv/config/gerritevents') as f:
