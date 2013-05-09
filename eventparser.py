@@ -22,7 +22,7 @@ def fetch_log_day(cursor, dt):
             if packet.get('type') == 'patchset-created':
                 cursor.execute('insert ignore into patchsets '
                                '(id, project, number, refurl, git_fetched) '
-                               'values ("%s", "%s", %d, "%s", 0);'
+                               'values ("%s", "%s", %s, "%s", 0);'
                                %(packet['change']['id'],
                                  packet['change']['project'],
                                  packet['patchSet']['number'],
