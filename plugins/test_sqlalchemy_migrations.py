@@ -22,7 +22,7 @@ def Handle(change, files):
         if filename.find('nova/db/sqlalchemy/versions') != -1:
             is_migration = True
 
-    if True:
+    if is_migration:
         print 'Sending email'
         utils.send_email('New patchset discovered!',
                          'michael.still@rackspace.com',
