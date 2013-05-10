@@ -5,6 +5,7 @@
 
 import datetime
 import git
+import imp
 import json
 import MySQLdb
 import os
@@ -17,10 +18,11 @@ import utils
 DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
 
 
-# Valid git_fetched states:
+# Valid states:
 #   0: not fetched
 #   m: fetch skipped as git repo missing
 #   f: fetched and converted into a list of changed files
+#   p: plugins run
 
 
 def fetch_log_day(cursor, dt):
@@ -33,12 +35,16 @@ def fetch_log_day(cursor, dt):
             packet = json.loads(line)
             if packet.get('type') == 'patchset-created':
                 cursor.execute('insert ignore into patchsets '
-                               '(id, project, number, refurl, git_fetched) '
-                               'values ("%s", "%s", %s, "%s", 0);'
-                               %(packet['change']['id'],
-                                 packet['change']['project'],
-                                 packet['patchSet']['number'],
-                                 packet['patchSet']['ref']))
+                               '(id, project, number, refurl, state, subject, '
+                               ' owner_name, url) '
+                               'values (%s, %s, %s, %s, 0, %s, %s, %s);',
+                               (packet['change']['id'],
+                                packet['change']['project'],
+                                packet['patchSet']['number'],
+                                packet['patchSet']['ref'],
+                                packet['change']['subject'],
+                                packet['change']['owner']['name'],
+                                packet['change']['url']))
                 new += cursor.rowcount
                 cursor.execute('commit;')
 
@@ -46,13 +52,13 @@ def fetch_log_day(cursor, dt):
 
 
 def perform_git_fetches(cursor):
-    cursor.execute('select * from patchsets where git_fetched="0";')
-    subcursor = utils.GetCursor()
+    cursor.execute('select * from patchsets where state="0";')
+    subcursor = utils.get_cursor()
 
     for row in cursor:
         repo_path = os.path.join('/srv/git', row['project'])
         if not os.path.exists(repo_path):
-            subcursor.execute('update patchsets set git_fetched="m" '
+            subcursor.execute('update patchsets set state="m" '
                               'where id="%s" and number=%d;'
                               %(row['id'], row['number']))
             subcursor.execute('commit;')
@@ -78,14 +84,42 @@ def perform_git_fetches(cursor):
             subcursor.execute('insert ignore into patchset_files '
                               '(id, number, filename) values ("%s", %d, "%s");'
                               %(row['id'], row['number'], filename))
-        subcursor.execute('update patchsets set git_fetched="f" '
+        subcursor.execute('update patchsets set state="f" '
+                          'where id="%s" and number=%d;'
+                          %(row['id'], row['number']))
+        subcursor.execute('commit;')
+
+
+def process_patchsets(cursor):
+    # Load plugins
+    plugins = []
+    for ent in os.listdir('plugins'):
+        if ent[0] != '.' and ent.endswith('.py'):
+            plugin_info = imp.find_module(ent[:-3], ['plugins'])
+            plugins.append(imp.load_module(ent[:-3], *plugin_info))
+
+    cursor.execute('select * from patchsets where state="f";')
+    subcursor = utils.get_cursor()
+
+    for row in cursor:
+        files = []
+        subcursor.execute('select * from patchset_files where id="%s" and '
+                          'number=%d;'
+                          %(row['id'], row['number']))
+        for subrow in subcursor:
+            files.append(subrow['filename'])
+
+        for plugin in plugins:
+            plugin.Handle(row, files)
+
+        subcursor.execute('update patchsets set state="p" '
                           'where id="%s" and number=%d;'
                           %(row['id'], row['number']))
         subcursor.execute('commit;')
 
 
 if __name__ == '__main__':
-    cursor = utils.GetCursor()
+    cursor = utils.get_cursor()
     now = datetime.datetime.now()
     new = 0
 
@@ -99,3 +133,4 @@ if __name__ == '__main__':
 
     print 'Added %d new patchsets' % new
     perform_git_fetches(cursor)
+    process_patchsets(cursor)
