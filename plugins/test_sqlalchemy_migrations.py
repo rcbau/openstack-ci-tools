@@ -19,7 +19,7 @@ def Handle(change, files):
     is_migration = False
 
     for filename in files:
-        if filename.find('nova/db/sqlalchemy/versions') != -1:
+        if filename.find('nova/db/sqlalchemy/migrate_repo/versions') != -1:
             is_migration = True
 
     if is_migration:
