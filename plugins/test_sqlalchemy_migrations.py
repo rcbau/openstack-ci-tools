@@ -30,8 +30,8 @@ def Handle(change, files):
                          % {'change_id': change['id'],
                             'number': change['number'],
                             'subject': change['subject'],
-                            'name': change['name'],
-                            'url': change['url']
+                            'name': change['owner_name'],
+                            'url': change['url'],
                             'is_migration': is_migration,
                             'files_list': '\n    '.join(files)})
 
