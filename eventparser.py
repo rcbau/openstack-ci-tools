@@ -133,4 +133,6 @@ if __name__ == '__main__':
 
     print 'Added %d new patchsets' % new
     perform_git_fetches(cursor)
+    print 'Patchsets fetched'
     process_patchsets(cursor)
+    print 'Plugin run complete'

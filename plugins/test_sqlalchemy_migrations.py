@@ -16,6 +16,8 @@ The following files are changed in the patchset:
 
 
 def Handle(change, files):
+    print change
+    print files
     is_migration = False
 
     for filename in files:
