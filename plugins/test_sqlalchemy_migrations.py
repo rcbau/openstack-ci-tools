@@ -16,8 +16,6 @@ The following files are changed in the patchset:
 
 
 def Handle(change, files):
-    print change
-    print files
     is_migration = False
 
     for filename in files:
@@ -37,3 +35,4 @@ def Handle(change, files):
                             'is_migration': is_migration,
                             'files_list': '\n    '.join(files)})
 
+        utils.create_git(change['project'], change['refurl'])
