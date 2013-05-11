@@ -66,6 +66,8 @@ def create_git(project, refurl):
     """Get a safe COW git checkout of the named refurl."""
 
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
+    os.makedirs(cow_dir)
+    os.makedirs(visible_dir)
     cmd = ('sudo unionfs-fuse -o cow,max_files=32768 '
            '-o allow_other,use_ino,suid,dev,nonempty '
            '%(cow_dir)s=rw:%(git_dir)s=ro %(visible_dir)s'
@@ -73,7 +75,7 @@ def create_git(project, refurl):
              'git_dir': git_dir,
              'visible_dir': visible_dir})
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    p.stdout.readlines()
+    print p.stdout.readlines()
 
     repo = git.Repo(os.path.join(GIT_DIR, project))
     assert repo.bare == False
@@ -93,4 +95,4 @@ def release_git(project, refurl):
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
     cmd = ('sudo umount %(visible_dir)s' % {'visible_dir': visible_dir})
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    p.stdout.readlines()
+    print p.stdout.readlines()
