@@ -8,6 +8,7 @@ import MySQLdb
 import os
 import smtplib
 import subprocess
+import uuid
 
 from email import encoders
 from email.mime.base import MIMEBase
@@ -75,7 +76,7 @@ def create_git(project, refurl):
              'git_dir': git_dir,
              'visible_dir': visible_dir})
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    print p.stdout.readlines()
+    print 'Mount stdout: %s' % p.stdout.readlines()
 
     repo = git.Repo(os.path.join(GIT_DIR, project))
     assert repo.bare == False
@@ -95,4 +96,38 @@ def release_git(project, refurl):
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
     cmd = ('sudo umount %(visible_dir)s' % {'visible_dir': visible_dir})
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    print p.stdout.readlines()
+    print 'Unmount stdout: %s' % p.stdout.readlines()
+
+
+def queue_work(cursor, ident, number, workname):
+    cursor.execute('insert into work_logs(id, number, workname) values '
+                   '("%s", %d, "%s");)'
+                   %(ident, number, workname))
+    cursor.execute('commit;')
+
+
+def dequeue_work(cursor, worker):
+    selectid = str(uuid.uuid4())
+    cursor.execute('update work_queue set selectid="%s", worker="%s", '
+                   'heartbeat = NOW() where selectid is NULL limit 1;'
+                   %(selectid, worker))
+    cursor.execute('commit;')
+    cursor.execute('select * from work_queue where selectid="%s";'
+                   % selectid)
+    row = cursor.fetchone()
+    return (row['id'], row['number'], row['workname'])
+
+
+def log(cursor, worker, ident, number, workname, log):
+    cursor.execute('insert into work_logs(id, number, workname, worker, log, '
+                   'timestamp) values("%s", %s, "%s", "%s", "%s", now());'
+                   %(ident, number, workname, worker, log))
+    heartbeat(cursor, worker, ident, number, workname)
+
+
+def heartbeat(cursor, worker, ident, number, workname):
+    cursor.execute('update work_queue update timestamp=NOW() where '
+                   'id="%s" and number=%s and workname="%s" and '
+                   'worker="%s";'
+                   %(ident, number, workname, worker))
+    cursor.execute('commit;')

@@ -35,4 +35,6 @@ def Handle(change, files):
                             'is_migration': is_migration,
                             'files_list': '\n    '.join(files)})
 
-        utils.create_git(change['project'], change['refurl'])
+        for dataset in ['trivial']:
+            utils.queue_work(cursor, change['id'], change['number'],
+                             'sqlalchemy_migration_%s' % dateset)
