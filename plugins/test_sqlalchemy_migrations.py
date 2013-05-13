@@ -39,3 +39,16 @@ def Handle(change, files):
         for dataset in ['trivial']:
             utils.queue_work(cursor, change['id'], change['number'],
                              'sqlalchemy_migration_%s' % dataset)
+
+
+def ExecuteWork(cursor, ident, number, workname, worker):
+    if not workname in ['sqlalchemy_migration_trivial']:
+        return False
+
+    utils.log(cursor, worker, ident, number, workname,
+              'Plugin for work queue item found.')
+
+    change = utils.get_patchset_details(cursor, ident, number)
+    utils.create_git(change['project'], change['refurl'])
+    utils.log(cursor, worker, ident, number, workname,
+              'Git checkout created')

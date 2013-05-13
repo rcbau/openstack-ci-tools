@@ -55,6 +55,12 @@ COW_DIR = '/srv/git-shadow'
 VISIBLE_DIR = '/srv/git-checkouts'
 
 
+def get_patchset_details(cursor, ident, number):
+    cursor.execute('select * from patchsets where id="%s" and number=%s;'
+                   %(ident, number))
+    return cursor.fetch_one()
+
+
 def _calculate_directories(project, refurl):
     safe_refurl = refurl.replace('/', '_')
     git_dir = os.path.join(GIT_DIR, project)
@@ -102,7 +108,7 @@ def release_git(project, refurl):
 
 
 def queue_work(cursor, ident, number, workname):
-    cursor.execute('insert into work_queue(id, number, workname) values '
+    cursor.execute('insert ignore into work_queue(id, number, workname) values '
                    '("%s", %d, "%s");'
                    %(ident, number, workname))
     cursor.execute('commit;')
