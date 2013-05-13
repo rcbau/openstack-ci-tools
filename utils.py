@@ -102,7 +102,7 @@ def release_git(project, refurl):
 
 
 def queue_work(cursor, ident, number, workname):
-    cursor.execute('insert into work_logs(id, number, workname) values '
+    cursor.execute('insert into work_queue(id, number, workname) values '
                    '("%s", %d, "%s");)'
                    %(ident, number, workname))
     cursor.execute('commit;')
