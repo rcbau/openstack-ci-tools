@@ -38,4 +38,4 @@ def Handle(change, files):
         cursor = utils.get_cursor()
         for dataset in ['trivial']:
             utils.queue_work(cursor, change['id'], change['number'],
-                             'sqlalchemy_migration_%s' % dateset)
+                             'sqlalchemy_migration_%s' % dataset)
