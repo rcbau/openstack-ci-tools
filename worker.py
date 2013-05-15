@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     handled = False
     for plugin in plugins:
-        handled = plugin.ExecuteWork(cursor, ident, number, workname, worker):
+        handled = plugin.ExecuteWork(cursor, ident, number, workname, worker)
         if handled:
             break
 
