@@ -11,7 +11,7 @@ if __name__ == '__main__':
     cursor = utils.get_cursor()
     worker = socket.gethostname()
 
-    (ident, number, workname) = dequeue_work(cursor, worker)
+    (ident, number, workname) = utils.dequeue_work(cursor, worker)
 
     # Load plugins
     plugins = []
