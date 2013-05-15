@@ -59,7 +59,7 @@ VISIBLE_DIR = '/srv/git-checkouts'
 def get_patchset_details(cursor, ident, number):
     cursor.execute('select * from patchsets where id="%s" and number=%s;'
                    %(ident, number))
-    return cursor.fetch_one()
+    return cursor.fetchone()
 
 
 def _calculate_directories(project, refurl):
@@ -136,7 +136,7 @@ def log(cursor, worker, ident, number, workname, log):
 
 
 def heartbeat(cursor, worker, ident, number, workname):
-    cursor.execute('update work_queue update timestamp=NOW() where '
+    cursor.execute('update work_queue set heartbeat=NOW() where '
                    'id="%s" and number=%s and workname="%s" and '
                    'worker="%s";'
                    %(ident, number, workname, worker))
