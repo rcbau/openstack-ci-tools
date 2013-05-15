@@ -25,7 +25,8 @@ def get_cursor():
 
     db = MySQLdb.connect(user = flags['dbuser'],
                          db = flags['dbname'],
-                         passwd = flags['dbpassword'])
+                         passwd = flags['dbpassword'],
+                         host = flags['dbhost'])
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
     return cursor
 
