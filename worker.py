@@ -2,6 +2,8 @@
 
 # Pull work entries off the queue and execute them
 
+import imp
+import os
 import socket
 
 import utils
