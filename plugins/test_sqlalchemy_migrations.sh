@@ -27,3 +27,6 @@ python bin/nova-manage db sync
 # Now run the patchset
 git checkout target
 time python bin/nova-manage db sync
+
+# Cleanup virtual env
+rmvirtualenv $1
