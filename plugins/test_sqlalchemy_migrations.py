@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import subprocess
 import utils
 
 
@@ -49,6 +50,23 @@ def ExecuteWork(cursor, ident, number, workname, worker):
               'Plugin for work queue item found.')
 
     change = utils.get_patchset_details(cursor, ident, number)
-    utils.create_git(change['project'], change['refurl'])
+    git_repo = utils.create_git(change['project'], change['refurl'])
     utils.log(cursor, worker, ident, number, workname,
               'Git checkout created')
+
+    safe_refurl = change['refurl'].replace('/', '_')
+
+    flags = utils.get_config()
+    cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
+           '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
+           '2>&1'
+           % {'ref_url': safe_refurl,
+              'git_repo': git_repo,
+              'dbuser': flags['test_dbuser'],
+              'dbpassword': flags['test_dbpassword'],
+              'db': 'nova_trivial_500'})
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    l = p.stdout.readline()
+    while l:
+        utils.log(cursor, worker, ident, number, workname, l)
+        l = p.stdout.readline()

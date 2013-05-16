@@ -16,13 +16,15 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def get_cursor():
-    """Get a database cursor."""
-
+def get_config():
     # Read config from a file
     with open('/srv/config/gerritevents') as f:
-        flags = json.loads(f.read())
+        return json.loads(f.read())
 
+
+def get_cursor():
+    """Get a database cursor."""
+    flags = get_config()
     db = MySQLdb.connect(user = flags['dbuser'],
                          db = flags['dbname'],
                          passwd = flags['dbpassword'],
@@ -98,6 +100,8 @@ def create_git(project, refurl):
     repo.git.checkout('FETCH_HEAD')
     repo.git.checkout('-b', 'target')
     repo.git.commit('-a', '-m', 'Commit target')
+
+    return visible_dir
 
 
 def release_git(project, refurl):
