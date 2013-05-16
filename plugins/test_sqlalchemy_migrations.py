@@ -65,6 +65,7 @@ def ExecuteWork(cursor, ident, number, workname, worker):
               'dbuser': flags['test_dbuser'],
               'dbpassword': flags['test_dbpassword'],
               'db': 'nova_trivial_500'})
+    print 'Executing script: %s' % cmd
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:

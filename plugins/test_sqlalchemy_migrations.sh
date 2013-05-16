@@ -14,6 +14,7 @@ cd $2
 git checkout master
 git pull
 
+source ~/.bashrc
 source /etc/bash_completion.d/virtualenvwrapper
 mkvirtualenv $1
 pip install -r tools/pip-requires
