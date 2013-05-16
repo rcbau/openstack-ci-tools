@@ -98,6 +98,8 @@ def create_git(project, refurl):
 
     repo = git.Repo(visible_dir)
     assert repo.bare == False
+    repo.git.checkout('master')
+    repo.git.branch('-D', 'target')
     repo.git.fetch('https://review.openstack.org/%s' % project, refurl)
     repo.git.checkout('FETCH_HEAD')
     repo.git.checkout('-b', 'target')
