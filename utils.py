@@ -136,8 +136,8 @@ def dequeue_work(cursor, worker):
 
 def log(cursor, worker, ident, number, workname, log):
     cursor.execute('insert into work_logs(id, number, workname, worker, log, '
-                   'timestamp) values("%s", %s, "%s", "%s", "%s", now());'
-                   %(ident, number, workname, worker, log))
+                   'timestamp) values(%s, %s, %s, %s, %s, now());',
+                   (ident, number, workname, worker, log))
     heartbeat(cursor, worker, ident, number, workname)
 
 
