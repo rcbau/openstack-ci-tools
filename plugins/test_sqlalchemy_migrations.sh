@@ -7,6 +7,7 @@
 # $5 is the nova db name
 
 # Setup the environment
+export PATH=/usr/lib/ccache:$PATH
 export PIP_DOWNLOAD_CACHE=/srv/cache/pip
 
 cd $2
