@@ -33,6 +33,7 @@ python bin/nova-manage db sync
 
 # Now run the patchset
 git checkout target
+git rebase origin
 pip install -r tools/pip-requires
 
 echo "***** DB Upgrade Begins *****"
