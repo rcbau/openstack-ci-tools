@@ -19,7 +19,9 @@ from email.mime.text import MIMEText
 def get_config():
     # Read config from a file
     with open('/srv/config/gerritevents') as f:
-        return json.loads(f.read().replace('\n', ''))
+        config = f.read().replace('\n', '')
+        print 'Config is: %s' % config
+        return json.loads(config)
 
 
 def get_cursor():
