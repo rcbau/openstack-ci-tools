@@ -68,5 +68,6 @@ def ExecuteWork(cursor, ident, number, workname, worker):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:
+        print 'From script: %s' % l.rstrip()
         utils.log(cursor, worker, ident, number, workname, l)
         l = p.stdout.readline()
