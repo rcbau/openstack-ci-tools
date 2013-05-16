@@ -97,7 +97,7 @@ def create_git(project, refurl):
     repo.git.fetch('https://review.openstack.org/%s' % project, refurl)
     repo.git.checkout('FETCH_HEAD')
     repo.git.checkout('-b', 'target')
-    repo.git.commit(m='Commit target')
+    repo.git.commit('-a', '-m', 'Commit target')
 
 
 def release_git(project, refurl):

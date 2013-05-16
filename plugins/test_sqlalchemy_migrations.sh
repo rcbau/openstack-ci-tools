@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 # $1 is the safe refs URL
 # $2 is the path to the git repo
@@ -9,7 +9,8 @@
 # Setup the environment
 cd $2
 source /etc/bash_completion.d/virtualenvwrapper
-mkvirtualenv $1 -r tools/pip-requires
+mkvirtualenv $1
+pip install -r tools/pip-requires
 toggleglobalsitepackages
 export PYTHONPATH=$PYTHONPATH:$2
 
@@ -17,6 +18,7 @@ export PYTHONPATH=$PYTHONPATH:$2
 cat - > /etc/nova/nova.conf <<EOF
 [DEFAULT]
 sql_connection = mysql://$3:$4@localhost/$5?charset=utf8
+log_file = 
 debug = True
 EOF
 
@@ -29,4 +31,5 @@ git checkout target
 time python bin/nova-manage db sync
 
 # Cleanup virtual env
+deactivate
 rmvirtualenv $1
