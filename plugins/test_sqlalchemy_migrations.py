@@ -72,3 +72,5 @@ def ExecuteWork(cursor, ident, number, workname, worker):
         print 'From script: %s' % l.rstrip()
         utils.log(cursor, worker, ident, number, workname, l)
         l = p.stdout.readline()
+
+    # utils.release_git(change['project'], change['refurl'])

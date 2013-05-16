@@ -6,6 +6,7 @@ import json
 import mimetypes
 import MySQLdb
 import os
+import shutil
 import smtplib
 import subprocess
 import uuid
@@ -78,10 +79,12 @@ def create_git(project, refurl):
     """Get a safe COW git checkout of the named refurl."""
 
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
-    if not os.path.exists(cow_dir):
-        os.makedirs(cow_dir)
-    if not os.path.exists(visible_dir):
-        os.makedirs(visible_dir)
+    if os.path.exists(cow_dir):
+        shutil.rmtree(cow_dir)
+    if os.path.exists(visible_dir):
+        shutil.rmtree(visible_dir)
+    os.makedirs(cow_dir)
+    os.makedirs(visible_dir)
     cmd = ('sudo unionfs-fuse -o cow,max_files=32768 '
            '-o allow_other,use_ino,suid,dev,nonempty '
            '%(cow_dir)s=rw:%(git_dir)s=ro %(visible_dir)s'
@@ -99,7 +102,12 @@ def create_git(project, refurl):
     repo = git.Repo(visible_dir)
     assert repo.bare == False
     repo.git.checkout('master')
-    repo.git.branch('-D', 'target')
+
+    try:
+        repo.git.branch('-D', 'target')
+    except:
+        pass
+
     repo.git.fetch('https://review.openstack.org/%s' % project, refurl)
     repo.git.checkout('FETCH_HEAD')
     repo.git.checkout('-b', 'target')

@@ -10,6 +10,10 @@
 export PATH=/usr/lib/ccache:$PATH
 export PIP_DOWNLOAD_CACHE=/srv/cache/pip
 
+# Restore database to known good state
+mysql -u $3 --password=$4 $5 < /srv/datasets/$5.sql
+
+# Update the database to current state of master
 cd $2
 git checkout master
 git pull
@@ -37,10 +41,13 @@ git checkout target
 git rebase origin
 pip install -r tools/pip-requires
 
+echo "***** DB Migrations Present *****"
+ls $2/nova/db/sqlalchemy/migrate_repo/versions/*.py
+
 echo "***** DB Upgrade Begins *****"
 time python bin/nova-manage db sync
 echo "***** DB Upgrade Ends *****"
 
 # Cleanup virtual env
-deactivate
-rmvirtualenv $1
+#deactivate
+#rmvirtualenv $1
