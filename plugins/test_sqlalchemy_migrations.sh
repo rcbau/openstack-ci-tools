@@ -8,10 +8,10 @@
 
 # Setup the environment
 cd $2
-export PYTHONPATH=$PYTHONPATH:$2
 source /etc/bash_completion.d/virtualenvwrapper
 mkvirtualenv $1 -r tools/pip-requires
 toggleglobalsitepackages
+export PYTHONPATH=$PYTHONPATH:$2
 
 # Create a nova.conf file
 cat - > /etc/nova/nova.conf <<EOF
