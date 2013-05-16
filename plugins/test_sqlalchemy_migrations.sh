@@ -7,7 +7,12 @@
 # $5 is the nova db name
 
 # Setup the environment
+export PIP_DOWNLOAD_CACHE=/srv/cache/pip
+
 cd $2
+git checkout master
+git pull
+
 source /etc/bash_completion.d/virtualenvwrapper
 mkvirtualenv $1
 pip install -r tools/pip-requires
@@ -19,16 +24,19 @@ cat - > /etc/nova/nova.conf <<EOF
 [DEFAULT]
 sql_connection = mysql://$3:$4@localhost/$5?charset=utf8
 log_file = 
-debug = True
+verbose = True
 EOF
 
 # Make sure the test DB is up to date with trunk
-git checkout master
 python bin/nova-manage db sync
 
 # Now run the patchset
 git checkout target
+pip install -r tools/pip-requires
+
+echo "***** DB Upgrade Begins *****"
 time python bin/nova-manage db sync
+echo "***** DB Upgrade Ends *****"
 
 # Cleanup virtual env
 deactivate
