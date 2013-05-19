@@ -17,6 +17,8 @@ keyfile = '/home/mikal/.ssh/id_gerrit'
 
 
 def stream_events():
+    last_event = time.time()
+
     # Connect
     transport = paramiko.Transport((hostname, hostport))
     transport.start_client()
@@ -34,6 +36,10 @@ def stream_events():
     try:
         while True:
             if not channel.recv_ready():
+                if time.time() - last_event > 300:
+                    print ('%s Possibly stale connection'
+                           % datetime.datetime.now())
+                    return
                 time.sleep(1)
 
             else:
@@ -42,6 +48,7 @@ def stream_events():
                     print '%s Connection closed' % datetime.datetime.now()
                     return
 
+                last_event = time.time()
                 print '%s Read %d bytes' %(datetime.datetime.now(), len(d))
                 data += d
 
