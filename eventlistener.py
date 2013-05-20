@@ -19,7 +19,7 @@ keyfile = '/home/mikal/.ssh/id_gerrit'
 
 def stream_events():
     last_event = time.time()
-    wait_tiem = 300 + randint(0, 300)
+    wait_tiem = 300 + random.randint(0, 300)
 
     # Connect
     transport = paramiko.Transport((hostname, hostport))
