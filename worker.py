@@ -22,6 +22,7 @@ if __name__ == '__main__':
         while True:
             (ident, number, workname) = utils.dequeue_work(cursor, worker)
             print '=========================================================='
+            utils.clear_log(cursor, ident, number, workname)
 
             # Load plugins
             plugins = []

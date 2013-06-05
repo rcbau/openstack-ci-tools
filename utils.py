@@ -121,11 +121,19 @@ def dequeue_work(cursor, worker):
     return (row['id'], row['number'], row['workname'])
 
 
+def clear_log(cursor, ident, number, workname):
+    cursor.execute('delete from work_logs where id="%s" and number=%s and '
+                   'workname="%s";'
+                   %(ident, number, workname))
+    cursor.execute('commit;')
+
+
 def log(cursor, worker, ident, number, workname, log):
     print '%s %s' % (datetime.datetime.now(), log.rstrip())
     cursor.execute('insert into work_logs(id, number, workname, worker, log, '
                    'timestamp) values(%s, %s, %s, %s, %s, now());',
                    (ident, number, workname, worker, log))
+    cursor.execute('commit;')
     heartbeat(cursor, worker, ident, number, workname)
 
 
