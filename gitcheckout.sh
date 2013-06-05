@@ -9,6 +9,7 @@ git checkout master
 git pull
 
 rm -rf $1 || true
+mkdir -p /srv/git-checkouts/$2
 cp -Rp /srv/git/$2 $1
 
 cd $1

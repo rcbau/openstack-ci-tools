@@ -30,4 +30,4 @@ if __name__ == '__main__':
                 subcursor.execute('select * from work_logs where id="%s" and number=%s and workname="%s" and worker="%s" order by timestamp asc;'
                                   %(row['id'], row['number'], row['workname'], row['worker']))
                 for logrow in subcursor:
-                    f.write('%s %s\n' %(logrow['timestamp'], logrow['log']))
+                    f.write('%s %s\n' %(logrow['timestamp'], logrow['log'].rstrip()))
