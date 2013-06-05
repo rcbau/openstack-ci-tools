@@ -43,7 +43,7 @@ def Handle(change, files):
 
 
 def ExecuteWork(cursor, ident, number, workname, worker):
-    if notworkname.startswith('sqlalchemy_migration_'):
+    if not workname.startswith('sqlalchemy_migration_'):
         return False
 
     utils.log(cursor, worker, ident, number, workname,
