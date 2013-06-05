@@ -31,7 +31,7 @@ if __name__ == '__main__':
         for plugin in plugins:
             handled = plugin.ExecuteWork(cursor, ident, number, workname, worker)
             if handled:
-                cursor.execute('update work_queue done="y" where id="%s" and '
+                cursor.execute('update work_queue set done="y" where id="%s" and '
                                'number=%s and workname="%s";'
                                % (ident, number, workname))
                 cursor.execute('commit;')
@@ -40,7 +40,7 @@ if __name__ == '__main__':
         if not handled:
             utils.log(cursor, worker, ident, number, workname,
                       'No plugin found for work of %s type' % workname)
-            cursor.execute('update work_queue done="m" where id="%s" and '
+            cursor.execute('update work_queue set done="m" where id="%s" and '
                            'number=%s and workname="%s";'
                            % (ident, number, workname))
             cursor.execute('commit;')
