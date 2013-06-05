@@ -48,7 +48,13 @@ python bin/nova-manage db sync
 echo "Now test the patchset"
 git checkout target
 git rebase origin
-pip install -q -r tools/pip-requires
+
+requires="tools/pip-requires"
+if [ ! -e $requires ]
+then
+  requires="requirements.txt"
+fi
+pip install -q -r $requires
 
 echo "***** DB Upgrade Begins for $5 *****"
 time python bin/nova-manage db sync
