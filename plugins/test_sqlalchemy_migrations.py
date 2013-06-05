@@ -50,14 +50,24 @@ def ExecuteWork(cursor, ident, number, workname, worker):
               'Plugin for work queue item found.')
 
     change = utils.get_patchset_details(cursor, ident, number)
-    git_repo = utils.create_git(change['project'], change['refurl'])
+    git_repo, conflict = utils.create_git(change['project'], change['refurl'],
+                                          cursor, worker, ident, number, workname)
+    if conflict:
+        utils.log(cursor, worker, ident, number, workname,
+                  'Git merge failure detected')
+        cursor.execute('update work_queue set done="c" where id="%s" and '
+                       'number=%s and workname="%s";'
+                       % (ident, number, workname))
+        cursor.execute('commit;')
+        return True
+
     utils.log(cursor, worker, ident, number, workname,
               'Git checkout created')
 
     safe_refurl = change['refurl'].replace('/', '_')
 
     flags = utils.get_config()
-    for db in ['nova_trivial_500', 'nova_trivial_6000']:
+    for db in ['nova_trivial_500', 'nova_trivial_6000', 'nova_user_001']:
         cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
                '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
                '2>&1'
@@ -70,7 +80,6 @@ def ExecuteWork(cursor, ident, number, workname, worker):
         p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         l = p.stdout.readline()
         while l:
-            print 'From script: %s' % l.rstrip()
             utils.log(cursor, worker, ident, number, workname, l)
             l = p.stdout.readline()
 

@@ -11,7 +11,7 @@ export PATH=/usr/lib/ccache:$PATH
 export PIP_DOWNLOAD_CACHE=/srv/cache/pip
 
 # Restore database to known good state
-echo "Restoring test database"
+echo "Restoring test database $5"
 mysql -u $3 --password=$4 $5 < /srv/datasets/$5.sql
 
 echo "Build test environment"
@@ -22,7 +22,13 @@ git pull
 source ~/.bashrc
 source /etc/bash_completion.d/virtualenvwrapper
 mkvirtualenv $1
-pip install -q -r tools/pip-requires
+
+requires="tools/pip-requires"
+if [ ! -e $requires ]
+then
+  requires="requirements.txt"
+fi
+pip install -q -r $requires
 toggleglobalsitepackages
 export PYTHONPATH=$PYTHONPATH:$2
 
@@ -44,9 +50,9 @@ git checkout target
 git rebase origin
 pip install -q -r tools/pip-requires
 
-echo "***** DB Upgrade Begins *****"
+echo "***** DB Upgrade Begins for $5 *****"
 time python bin/nova-manage db sync
-echo "***** DB Upgrade Ends *****"
+echo "***** DB Upgrade Ends for $5 *****"
 
 # Cleanup virtual env
 deactivate

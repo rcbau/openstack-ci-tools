@@ -75,9 +75,10 @@ def _calculate_directories(project, refurl):
     return (git_dir, cow_dir, visible_dir)
 
 
-def create_git(project, refurl):
+def create_git(project, refurl, cursor, worker, ident, number, workname):
     """Get a safe COW git checkout of the named refurl."""
 
+    conflict = False
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
     cmd = ('/srv/openstack-ci-tools/gitcheckout.sh "%(visible_dir)s" "%(project)s" "%(refurl)s" 2>&1'
            %{'cow_dir': cow_dir,
@@ -88,9 +89,11 @@ def create_git(project, refurl):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:
-        print 'Checkout script: %s' % l.rstrip()
+        log(cursor, worker, ident, number, workname, l)
+        if l.find('CONFLICT') != -1:
+            conflict = True
         l = p.stdout.readline()
-    return visible_dir
+    return visible_dir, conflict
 
 
 def queue_work(cursor, ident, number, workname):
