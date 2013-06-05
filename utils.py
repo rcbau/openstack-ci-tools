@@ -21,7 +21,6 @@ def get_config():
     # Read config from a file
     with open('/srv/config/gerritevents') as f:
         config = f.read().replace('\n', '')
-        print 'Config is: %s' % config
         return json.loads(config)
 
 
