@@ -57,20 +57,21 @@ def ExecuteWork(cursor, ident, number, workname, worker):
     safe_refurl = change['refurl'].replace('/', '_')
 
     flags = utils.get_config()
-    cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
-           '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
-           '2>&1'
-           % {'ref_url': safe_refurl,
-              'git_repo': git_repo,
-              'dbuser': flags['test_dbuser'],
-              'dbpassword': flags['test_dbpassword'],
-              'db': 'nova_trivial_500'})
-    print 'Executing script: %s' % cmd
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    l = p.stdout.readline()
-    while l:
-        print 'From script: %s' % l.rstrip()
-        utils.log(cursor, worker, ident, number, workname, l)
+    for db in ['nova_trivial_500', 'nova_trivial_6000']:
+        cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
+               '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
+               '2>&1'
+               % {'ref_url': safe_refurl,
+                  'git_repo': git_repo,
+                  'dbuser': flags['test_dbuser'],
+                  'dbpassword': flags['test_dbpassword'],
+                  'db': db})
+        print 'Executing script: %s' % cmd
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         l = p.stdout.readline()
+        while l:
+            print 'From script: %s' % l.rstrip()
+            utils.log(cursor, worker, ident, number, workname, l)
+            l = p.stdout.readline()
 
-    # utils.release_git(change['project'], change['refurl'])
+    return True

@@ -79,50 +79,18 @@ def create_git(project, refurl):
     """Get a safe COW git checkout of the named refurl."""
 
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
-    if os.path.exists(cow_dir):
-        shutil.rmtree(cow_dir)
-    if os.path.exists(visible_dir):
-        shutil.rmtree(visible_dir)
-    os.makedirs(cow_dir)
-    os.makedirs(visible_dir)
-    cmd = ('sudo unionfs-fuse -o cow,max_files=32768 '
-           '-o allow_other,use_ino,suid,dev,nonempty '
-           '%(cow_dir)s=rw:%(git_dir)s=ro %(visible_dir)s'
+    cmd = ('/srv/openstack-ci-tools/gitcheckout.sh "%(visible_dir)s" "%(project)s" "%(refurl)s" 2>&1'
            %{'cow_dir': cow_dir,
              'git_dir': git_dir,
-             'visible_dir': visible_dir})
+             'visible_dir': visible_dir,
+             'project': project,
+             'refurl': refurl})
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    print 'Mount stdout: %s' % p.stdout.readlines()
-
-    repo = git.Repo(os.path.join(GIT_DIR, project))
-    assert repo.bare == False
-    repo.git.checkout('master')
-    repo.git.pull()
-
-    repo = git.Repo(visible_dir)
-    assert repo.bare == False
-    repo.git.checkout('master')
-
-    try:
-        repo.git.branch('-D', 'target')
-    except:
-        pass
-
-    repo.git.fetch('https://review.openstack.org/%s' % project, refurl)
-    repo.git.checkout('FETCH_HEAD')
-    repo.git.checkout('-b', 'target')
-    repo.git.commit('-a', '-m', 'Commit target')
-
+    l = p.stdout.readline()
+    while l:
+        print 'Checkout script: %s' % l.rstrip()
+        l = p.stdout.readline()
     return visible_dir
-
-
-def release_git(project, refurl):
-    """Destroy a git checkout."""
-
-    git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
-    cmd = ('sudo umount %(visible_dir)s' % {'visible_dir': visible_dir})
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    print 'Unmount stdout: %s' % p.stdout.readlines()
 
 
 def queue_work(cursor, ident, number, workname):
@@ -130,6 +98,10 @@ def queue_work(cursor, ident, number, workname):
                    '("%s", %d, "%s");'
                    %(ident, number, workname))
     cursor.execute('commit;')
+
+
+class NoWorkFound(Exception):
+    pass
 
 
 def dequeue_work(cursor, worker):
@@ -140,6 +112,8 @@ def dequeue_work(cursor, worker):
     cursor.execute('commit;')
     cursor.execute('select * from work_queue where selectid="%s";'
                    % selectid)
+    if cursor.rowcount == 0:
+        raise NoWorkFound()
     row = cursor.fetchone()
     return (row['id'], row['number'], row['workname'])
 
