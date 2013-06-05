@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-
+import datetime
 import git
 import json
 import mimetypes
@@ -137,6 +137,7 @@ def dequeue_work(cursor, worker):
 
 
 def log(cursor, worker, ident, number, workname, log):
+    print '%s %s' % (datetime.datetime.now(), log.rstrip())
     cursor.execute('insert into work_logs(id, number, workname, worker, log, '
                    'timestamp) values(%s, %s, %s, %s, %s, now());',
                    (ident, number, workname, worker, log))
