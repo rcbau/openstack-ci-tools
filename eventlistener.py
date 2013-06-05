@@ -6,6 +6,7 @@
 import datetime
 import os
 import paramiko
+import random
 import sys
 import time
 
@@ -17,6 +18,9 @@ keyfile = '/home/mikal/.ssh/id_gerrit'
 
 
 def stream_events():
+    last_event = time.time()
+    wait_time = 300 + random.randint(0, 300)
+
     # Connect
     transport = paramiko.Transport((hostname, hostport))
     transport.start_client()
@@ -34,6 +38,10 @@ def stream_events():
     try:
         while True:
             if not channel.recv_ready():
+                if time.time() - last_event > wait_time:
+                    print ('%s Possibly stale connection'
+                           % datetime.datetime.now())
+                    return
                 time.sleep(1)
 
             else:
@@ -42,6 +50,7 @@ def stream_events():
                     print '%s Connection closed' % datetime.datetime.now()
                     return
 
+                last_event = time.time()
                 print '%s Read %d bytes' %(datetime.datetime.now(), len(d))
                 data += d
 
@@ -63,5 +72,6 @@ def stream_events():
 
 
 if __name__ == '__main__':
+    random.seed()
     while True:
         stream_events()

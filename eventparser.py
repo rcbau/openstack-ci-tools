@@ -70,7 +70,7 @@ def perform_git_fetches(cursor):
         repo.git.pull()
 
         files = {}
-        print row['refurl']
+        print '%s %s' %(datetime.datetime.now(), row['refurl'])
         repo.git.fetch('https://review.openstack.org/%s' %row['project'],
                        row['refurl'])
         for line in repo.git.format_patch('-1', '--stdout',
@@ -78,7 +78,7 @@ def perform_git_fetches(cursor):
             m = DIFF_FILENAME_RE.match(line)
             if m:
                 files[m.group(1)] = True
-        print '  %d files changed' % len(files)
+        print '%s  %d files changed' %(datetime.datetime.now(), len(files))
 
         for filename in files:
             subcursor.execute('insert ignore into patchset_files '
@@ -131,8 +131,8 @@ if __name__ == '__main__':
 
         now -= datetime.timedelta(days=1)
 
-    print 'Added %d new patchsets' % new
+    print '%s Added %d new patchsets' %(datetime.datetime.now(), new)
     perform_git_fetches(cursor)
-    print 'Patchsets fetched'
+    print '%s Patchsets fetched' % datetime.datetime.now()
     process_patchsets(cursor)
-    print 'Plugin run complete'
+    print '%s Plugin run complete' % datetime.datetime.now()
