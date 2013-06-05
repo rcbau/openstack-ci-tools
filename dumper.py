@@ -12,7 +12,6 @@ if __name__ == '__main__':
     cursor.execute('select * from work_queue where done is not null;')
     for row in cursor:
         path = os.path.join('/var/www/ci', row['id'], str(row['number']), row['workname'])
-        print path
         workerpath = os.path.join(path, 'worker')
         worker = None
         if os.path.exists(workerpath):
@@ -20,6 +19,7 @@ if __name__ == '__main__':
                 worker = f.read().rstrip()
 
         if worker != row['worker']:
+            print path
             if not os.path.exists(path):
                 os.makedirs(path)
             with open(workerpath, 'w') as f:
