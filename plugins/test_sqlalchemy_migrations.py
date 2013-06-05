@@ -37,13 +37,13 @@ def Handle(change, files):
                             'files_list': '\n    '.join(files)})
 
         cursor = utils.get_cursor()
-        for dataset in ['trivial']:
+        for dataset in ['nova_trivial_500', 'nova_trivial_6000', 'nova_user_001']:
             utils.queue_work(cursor, change['id'], change['number'],
                              'sqlalchemy_migration_%s' % dataset)
 
 
 def ExecuteWork(cursor, ident, number, workname, worker):
-    if not workname in ['sqlalchemy_migration_trivial']:
+    if notworkname.startswith('sqlalchemy_migration_'):
         return False
 
     utils.log(cursor, worker, ident, number, workname,
@@ -67,20 +67,20 @@ def ExecuteWork(cursor, ident, number, workname, worker):
     safe_refurl = change['refurl'].replace('/', '_')
 
     flags = utils.get_config()
-    for db in ['nova_trivial_500', 'nova_trivial_6000', 'nova_user_001']:
-        cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
-               '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
-               '2>&1'
-               % {'ref_url': safe_refurl,
-                  'git_repo': git_repo,
-                  'dbuser': flags['test_dbuser'],
-                  'dbpassword': flags['test_dbpassword'],
-                  'db': db})
-        print 'Executing script: %s' % cmd
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    db = workname[len('sqlalchemy_migration_'):]
+    cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
+           '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
+           '2>&1'
+           % {'ref_url': safe_refurl,
+              'git_repo': git_repo,
+              'dbuser': flags['test_dbuser'],
+              'dbpassword': flags['test_dbpassword'],
+              'db': db})
+    print 'Executing script: %s' % cmd
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    l = p.stdout.readline()
+    while l:
+        utils.log(cursor, worker, ident, number, workname, l)
         l = p.stdout.readline()
-        while l:
-            utils.log(cursor, worker, ident, number, workname, l)
-            l = p.stdout.readline()
 
     return True
