@@ -36,8 +36,11 @@ git pull
 
 source ~/.bashrc
 source /etc/bash_completion.d/virtualenvwrapper
+set +v
+echo "Setting up virtual env"
 mkvirtualenv $1
 toggleglobalsitepackages
+set -v
 export PYTHONPATH=$PYTHONPATH:$2
 
 # Create a nova.conf file
@@ -77,5 +80,7 @@ time python bin/nova-manage db sync
 echo "***** DB Upgrade Ends for $5 *****"
 
 # Cleanup virtual env
+set +v
+echo "Cleaning up virtual env"
 deactivate
 rmvirtualenv $1
