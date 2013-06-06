@@ -19,7 +19,7 @@ pip_requires() {
 echo "To execute this script manually, run this:"
 echo "$0 $1 $2 $3 $4 $5"
 
-set -x
+set -v
 
 # Setup the environment
 export PATH=/usr/lib/ccache:$PATH
