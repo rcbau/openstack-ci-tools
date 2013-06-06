@@ -19,7 +19,7 @@ pip_requires() {
 echo "To execute this script manually, run this:"
 echo "$0 $1 $2 $3 $4 $5"
 
-set -v
+set -x
 
 # Setup the environment
 export PATH=/usr/lib/ccache:$PATH
@@ -34,13 +34,13 @@ cd $2
 git checkout master
 git pull
 
+set +x
+echo "Setting up virtual env"
 source ~/.bashrc
 source /etc/bash_completion.d/virtualenvwrapper
-set +v
-echo "Setting up virtual env"
 mkvirtualenv $1
 toggleglobalsitepackages
-set -v
+set -x
 export PYTHONPATH=$PYTHONPATH:$2
 
 # Create a nova.conf file
@@ -80,7 +80,7 @@ time python bin/nova-manage db sync
 echo "***** DB Upgrade Ends for $5 *****"
 
 # Cleanup virtual env
-set +v
+set +x
 echo "Cleaning up virtual env"
 deactivate
 rmvirtualenv $1

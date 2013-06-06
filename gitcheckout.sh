@@ -1,4 +1,4 @@
-#!/bin/bash -v
+#!/bin/bash -x
 
 # $1 is the git directory
 # $2 is the project name
