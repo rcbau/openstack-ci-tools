@@ -18,7 +18,7 @@ pip_requires() {
 
 db_sync() {
   echo "***** DB upgrade to state of $1 starts *****"
-  nova_manage="bin/nova-manage"
+  nova_manage="$2/bin/nova-manage"
   python $nova_manage db sync
   echo "***** DB upgrade to state of $1 finished *****"
 }
@@ -67,14 +67,14 @@ then
   git checkout stable/grizzly
   git pull
   pip_requires
-  db_sync "grizzly"
+  db_sync "grizzly" $2
   git checkout master
 fi
 
 # Make sure the test DB is up to date with trunk
 echo "Update database to current state of master"
 pip_requires
-db_sync "master"
+db_sync "master" $2
 
 # Now run the patchset
 echo "Now test the patchset"
@@ -82,7 +82,7 @@ git checkout target
 git rebase origin
 pip_requires
 
-db_sync "patchset"
+db_sync "patchset" $2
 
 # Cleanup virtual env
 set +x
