@@ -34,6 +34,10 @@ export PIP_DOWNLOAD_CACHE=/srv/cache/pip
 
 # Restore database to known good state
 echo "Restoring test database $5"
+mysql --defaults-file=/srv/config/mysql -u root -e "drop database $5"
+mysql --defaults-file=/srv/config/mysql -u root -e "create database $5"
+mysql --defaults-file=/srv/config/mysql -u root -e "create user '$3'@'localhost' identified by '$4';"
+mysql --defaults-file=/srv/config/mysql -u root -e "grant all privileges on $5.* TO '$3'@'localhost';"
 mysql -u $3 --password=$4 $5 < /srv/datasets/$5.sql
 
 echo "Build test environment"
