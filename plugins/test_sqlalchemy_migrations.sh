@@ -19,7 +19,13 @@ pip_requires() {
 db_sync() {
   echo "***** DB upgrade to state of $1 starts *****"
   nova_manage="$2/bin/nova-manage"
-  python $nova_manage db sync
+  if [ -e $nova_manage ]
+  then
+    python $nova_manage db sync
+  else
+    python setup.py develop
+    nova-manage db sync
+  fi
   echo "***** DB upgrade to state of $1 finished *****"
 }
 
