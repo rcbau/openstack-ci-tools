@@ -17,15 +17,28 @@ pip_requires() {
 }
 
 db_sync() {
+  # $1 is the test target
+  # $2 is the path to the git repo
+  # $3 is the nova db user
+  # $4 is the nova db password
+  # $5 is the nova db name
+
+  # Create a nova.conf file
+  cat - > $2/nova-$1.conf <<EOF
+[DEFAULT]
+sql_connection = mysql://$3:$4@localhost/$5?charset=utf8
+log_config = /srv/openstack-ci-tools/loggign.conf
+EOF
+
   nova_manage="$2/bin/nova-manage"
   if [ -e $nova_manage ]
   then
     echo "***** DB upgrade to state of $1 starts *****"
-    python $nova_manage db sync
+    python $nova_manage --config-file $2/nova-$1.conf db sync
   else
     python setup.py develop
     echo "***** DB upgrade to state of $1 starts *****"
-    nova-manage db sync
+    nova-manage --config-file $2/nova-$1.conf db sync
   fi
   echo "***** DB upgrade to state of $1 finished *****"
 }
@@ -61,14 +74,6 @@ toggleglobalsitepackages
 set -x
 export PYTHONPATH=$PYTHONPATH:$2
 
-# Create a nova.conf file
-cat - > /etc/nova/nova.conf <<EOF
-[DEFAULT]
-sql_connection = mysql://$3:$4@localhost/$5?charset=utf8
-log_file = 
-verbose = True
-EOF
-
 # Some databases are from Folsom
 version=`mysql -u $3 --password=$4 $5 -e "select * from migrate_version \G" | grep version | sed 's/.*: //'`
 echo "Schema version is $version"
@@ -78,14 +83,14 @@ then
   git checkout stable/grizzly
   git pull
   pip_requires
-  db_sync "grizzly" $2
+  db_sync "grizzly" $2 $3 $4 $5
   git checkout master
 fi
 
 # Make sure the test DB is up to date with trunk
 echo "Update database to current state of master"
 pip_requires
-db_sync "master" $2
+db_sync "master" $2 $3 $4 $5
 
 # Now run the patchset
 echo "Now test the patchset"
@@ -93,7 +98,7 @@ git checkout target
 git rebase origin
 pip_requires
 
-db_sync "patchset" $2
+db_sync "patchset" $2 $3 $4 $5
 
 # Cleanup virtual env
 set +x
