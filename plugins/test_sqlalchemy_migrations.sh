@@ -27,7 +27,7 @@ db_sync() {
   cat - > $2/nova-$1.conf <<EOF
 [DEFAULT]
 sql_connection = mysql://$3:$4@localhost/$5?charset=utf8
-log_config = /srv/openstack-ci-tools/loggign.conf
+log_config = /srv/openstack-ci-tools/logging.conf
 EOF
 
   nova_manage="$2/bin/nova-manage"
