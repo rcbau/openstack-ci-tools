@@ -16,7 +16,7 @@ cp -Rp /srv/git/$2 $1
 cd $1
 if [ $4 -gt 0 ]
 then
-  git checkout HEADr~$4
+  git checkout HEAD~$4
 fi
 
 git checkout -b trunk
