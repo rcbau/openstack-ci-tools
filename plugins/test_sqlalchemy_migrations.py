@@ -65,7 +65,7 @@ def ExecuteWork(cursor, ident, number, workname, worker):
                                               rewind)
         if conflict:
             utils.log(cursor, worker, ident, number, workname,
-                      'Git merge failure with HEAD^%d' % rewind)
+                      'Git merge failure with HEAD~%d' % rewind)
             rewind += 1
 
     if conflict:
