@@ -94,7 +94,6 @@ db_sync "trunk" $2 $3 $4 $5
 # Now run the patchset
 echo "Now test the patchset"
 git checkout target
-git rebase origin
 pip_requires
 
 db_sync "patchset" $2 $3 $4 $5
