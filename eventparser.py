@@ -16,6 +16,7 @@ import utils
 
 
 DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
+FETCH_DAYS = 7
 
 
 # Valid states:
@@ -29,6 +30,8 @@ def fetch_log_day(cursor, dt):
     new = 0
 
     for host in ['50.56.178.145', '198.61.229.73']:
+        print '%s Fetching http://%s/output/%s/%s/%s' %(datetime.datetime.now(),
+                                                        host, dt.year, dt.month, dt.day)
         remote = urllib.urlopen('http://%s/output/%s/%s/%s'
                                 %(host, dt.year, dt.month, dt.day))
         for line in remote.readlines():
@@ -47,6 +50,10 @@ def fetch_log_day(cursor, dt):
                                 packet['change']['url']))
                 new += cursor.rowcount
                 cursor.execute('commit;')
+
+        process_patchsets(cursor)
+        perform_git_fetches(cursor)
+        process_patchsets(cursor)
 
     return new
 
@@ -123,7 +130,7 @@ if __name__ == '__main__':
     now = datetime.datetime.now()
     new = 0
 
-    for i in range(7):
+    for i in range(FETCH_DAYS):
         try:
             new += fetch_log_day(cursor, now)
         except Exception, e:
@@ -132,7 +139,3 @@ if __name__ == '__main__':
         now -= datetime.timedelta(days=1)
 
     print '%s Added %d new patchsets' %(datetime.datetime.now(), new)
-    perform_git_fetches(cursor)
-    print '%s Patchsets fetched' % datetime.datetime.now()
-    process_patchsets(cursor)
-    print '%s Plugin run complete' % datetime.datetime.now()

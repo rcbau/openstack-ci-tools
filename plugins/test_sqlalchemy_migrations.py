@@ -28,7 +28,7 @@ def Handle(change, files):
 
     if is_migration:
         print 'Sending email'
-        utils.send_email('New patchset discovered!',
+        utils.send_email('New patchset %s discovered!' % change['id'],
                          'michael.still@rackspace.com',
                          NEW_PATCH_EMAIL
                          % {'change_id': change['id'],
