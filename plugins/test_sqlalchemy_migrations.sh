@@ -62,8 +62,7 @@ mysql -u $3 --password=$4 $5 < /srv/datasets/$5.sql
 
 echo "Build test environment"
 cd $2
-git checkout master
-git pull
+git checkout trunk 
 
 set +x
 echo "Setting up virtual env"
@@ -84,13 +83,13 @@ then
   git pull
   pip_requires
   db_sync "grizzly" $2 $3 $4 $5
-  git checkout master
+  git checkout trunk
 fi
 
 # Make sure the test DB is up to date with trunk
-echo "Update database to current state of master"
+echo "Update database to current state of trunk"
 pip_requires
-db_sync "master" $2 $3 $4 $5
+db_sync "trunk" $2 $3 $4 $5
 
 # Now run the patchset
 echo "Now test the patchset"

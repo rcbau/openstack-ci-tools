@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
+import os
+import re
 import subprocess
+
 import utils
 
 
@@ -42,6 +45,9 @@ def Handle(change, files):
                              'sqlalchemy_migration_%s' % dataset)
 
 
+MIGRATION_NAME_RE = re.compile('([0-9]+)_(.*)\.py')
+
+
 def ExecuteWork(cursor, ident, number, workname, worker):
     if not workname.startswith('sqlalchemy_migration_'):
         return False
@@ -50,8 +56,18 @@ def ExecuteWork(cursor, ident, number, workname, worker):
               'Plugin for work queue item found.')
 
     change = utils.get_patchset_details(cursor, ident, number)
-    git_repo, conflict = utils.create_git(change['project'], change['refurl'],
-                                          cursor, worker, ident, number, workname)
+    conflict = True
+    rewind = 0
+
+    while conflict and rewind < 10:
+        git_repo, conflict = utils.create_git(change['project'], change['refurl'],
+                                              cursor, worker, ident, number, workname,
+                                              rewind)
+        if conflict:
+            utils.log(cursor, worker, ident, number, workname,
+                      'Git merge failure with HEAD^%d' % rewind)
+            rewind += 1
+
     if conflict:
         utils.log(cursor, worker, ident, number, workname,
                   'Git merge failure detected')
@@ -63,6 +79,20 @@ def ExecuteWork(cursor, ident, number, workname, worker):
 
     utils.log(cursor, worker, ident, number, workname,
               'Git checkout created')
+
+    # Record the migration names present
+    cursor.execute('delete from patchset_migrations where id="%s" and number=%s;'
+                   %(ident, number))
+    migrations = os.path.join(git_repo,
+                              'nova/db/sqlalchemy/migrate_repo/versions')
+    for ent in os.listdir(migrations):
+        m = MIGRATION_NAME_RE.match(ent)
+        if m:
+            cursor.execute('insert into patchset_migrations'
+                           '(id, number, migration, name) '
+                           'values("%s", %s, %s, "%s");'
+                           %(ident, number, m.group(1), m.group(2)))
+    cursor.execute('commit;')
 
     safe_refurl = change['refurl'].replace('/', '_')
 
