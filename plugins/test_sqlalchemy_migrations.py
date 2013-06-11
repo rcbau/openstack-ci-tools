@@ -81,8 +81,6 @@ def ExecuteWork(cursor, ident, number, workname, worker):
               'Git checkout created')
 
     # Record the migration names present
-    cursor.execute('delete from patchset_migrations where id="%s" and number=%s;'
-                   %(ident, number))
     migrations = os.path.join(git_repo,
                               'nova/db/sqlalchemy/migrate_repo/versions')
     for ent in os.listdir(migrations):
