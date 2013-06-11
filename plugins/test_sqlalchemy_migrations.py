@@ -86,7 +86,7 @@ def ExecuteWork(cursor, ident, number, workname, worker):
     for ent in os.listdir(migrations):
         m = MIGRATION_NAME_RE.match(ent)
         if m:
-            cursor.execute('insert into patchset_migrations'
+            cursor.execute('insert ignore into patchset_migrations'
                            '(id, number, migration, name) '
                            'values("%s", %s, %s, "%s");'
                            %(ident, number, m.group(1), m.group(2)))
