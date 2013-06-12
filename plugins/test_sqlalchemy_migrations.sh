@@ -79,7 +79,6 @@ if [ $version == "133" ]
 then
   echo "Database is from Folsom! Upgrade via grizzly"
   git checkout stable/grizzly
-  git pull
   pip_requires
   db_sync "grizzly" $2 $3 $4 $5
 fi
