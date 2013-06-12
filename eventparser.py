@@ -16,6 +16,7 @@ import utils
 
 
 DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
+FETCH_DAYS = 7
 
 
 # Valid states:
@@ -25,10 +26,13 @@ DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
 #   p: plugins run
 
 
-def fetch_log_day(cursor, dt):
+def fetch_log_day(dt):
     new = 0
+    cursor = utils.get_cursor()
 
     for host in ['50.56.178.145', '198.61.229.73']:
+        print '%s Fetching http://%s/output/%s/%s/%s' %(datetime.datetime.now(),
+                                                        host, dt.year, dt.month, dt.day)
         remote = urllib.urlopen('http://%s/output/%s/%s/%s'
                                 %(host, dt.year, dt.month, dt.day))
         for line in remote.readlines():
@@ -48,12 +52,17 @@ def fetch_log_day(cursor, dt):
                 new += cursor.rowcount
                 cursor.execute('commit;')
 
+        process_patchsets()
+        perform_git_fetches()
+        process_patchsets()
+
     return new
 
 
-def perform_git_fetches(cursor):
-    cursor.execute('select * from patchsets where state="0";')
+def perform_git_fetches():
+    cursor = utils.get_cursor()
     subcursor = utils.get_cursor()
+    cursor.execute('select * from patchsets where state="0";')
 
     for row in cursor:
         repo_path = os.path.join('/srv/git', row['project'])
@@ -90,7 +99,9 @@ def perform_git_fetches(cursor):
         subcursor.execute('commit;')
 
 
-def process_patchsets(cursor):
+def process_patchsets():
+    cursor = utils.get_cursor()
+
     # Load plugins
     plugins = []
     for ent in os.listdir('plugins'):
@@ -119,20 +130,15 @@ def process_patchsets(cursor):
 
 
 if __name__ == '__main__':
-    cursor = utils.get_cursor()
     now = datetime.datetime.now()
     new = 0
 
-    for i in range(7):
+    for i in range(FETCH_DAYS):
         try:
-            new += fetch_log_day(cursor, now)
+            new += fetch_log_day(now)
         except Exception, e:
             print e
 
         now -= datetime.timedelta(days=1)
 
     print '%s Added %d new patchsets' %(datetime.datetime.now(), new)
-    perform_git_fetches(cursor)
-    print '%s Patchsets fetched' % datetime.datetime.now()
-    process_patchsets(cursor)
-    print '%s Plugin run complete' % datetime.datetime.now()
