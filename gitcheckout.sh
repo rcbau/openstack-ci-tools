@@ -19,6 +19,7 @@ then
   git checkout HEAD~$4
 fi
 
-git checkout -b trunk
 git checkout -b target
-git pull https://review.openstack.org/$2 $3
+git fetch https://review.openstack.org/$2 $3
+git checkout FETCH_HEAD
+git checkout -b trunk
