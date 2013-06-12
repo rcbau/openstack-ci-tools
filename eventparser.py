@@ -26,8 +26,9 @@ FETCH_DAYS = 7
 #   p: plugins run
 
 
-def fetch_log_day(cursor, dt):
+def fetch_log_day(dt):
     new = 0
+    cursor = utils.get_cursor()
 
     for host in ['50.56.178.145', '198.61.229.73']:
         print '%s Fetching http://%s/output/%s/%s/%s' %(datetime.datetime.now(),
@@ -51,16 +52,17 @@ def fetch_log_day(cursor, dt):
                 new += cursor.rowcount
                 cursor.execute('commit;')
 
-        process_patchsets(cursor)
-        perform_git_fetches(cursor)
-        process_patchsets(cursor)
+        process_patchsets()
+        perform_git_fetches()
+        process_patchsets()
 
     return new
 
 
-def perform_git_fetches(cursor):
-    cursor.execute('select * from patchsets where state="0";')
+def perform_git_fetches():
+    cursor = utils.get_cursor()
     subcursor = utils.get_cursor()
+    cursor.execute('select * from patchsets where state="0";')
 
     for row in cursor:
         repo_path = os.path.join('/srv/git', row['project'])
@@ -97,7 +99,9 @@ def perform_git_fetches(cursor):
         subcursor.execute('commit;')
 
 
-def process_patchsets(cursor):
+def process_patchsets():
+    cursor = utils.get_cursor()
+
     # Load plugins
     plugins = []
     for ent in os.listdir('plugins'):
@@ -126,13 +130,12 @@ def process_patchsets(cursor):
 
 
 if __name__ == '__main__':
-    cursor = utils.get_cursor()
     now = datetime.datetime.now()
     new = 0
 
     for i in range(FETCH_DAYS):
         try:
-            new += fetch_log_day(cursor, now)
+            new += fetch_log_day(now)
         except Exception, e:
             print e
 
