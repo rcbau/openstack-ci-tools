@@ -62,7 +62,6 @@ mysql -u $3 --password=$4 $5 < /srv/datasets/$5.sql
 
 echo "Build test environment"
 cd $2
-git checkout trunk 
 
 set +x
 echo "Setting up virtual env"
@@ -83,17 +82,23 @@ then
   git pull
   pip_requires
   db_sync "grizzly" $2 $3 $4 $5
-  git checkout trunk
 fi
 
 # Make sure the test DB is up to date with trunk
-echo "Update database to current state of trunk"
-pip_requires
-db_sync "trunk" $2 $3 $4 $5
+git checkout target
+if [ `git show | grep "^\-\-\-" | grep "migrate_repo/versions" | wc -l` -gt 0 ]
+then
+  echo "This change alters an existing migration, skipping trunk updates."
+else
+  echo "Update database to current state of trunk"
+  git checkout trunk
+  pip_requires
+  db_sync "trunk" $2 $3 $4 $5
+  git checkout target
+fi
 
 # Now run the patchset
 echo "Now test the patchset"
-git checkout target
 pip_requires
 
 db_sync "patchset" $2 $3 $4 $5
