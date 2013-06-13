@@ -7,13 +7,12 @@ import subprocess
 import utils
 
 
-NEW_PATCH_EMAIL = """The CI watcher has discovered a new patchset!
+NEW_PATCH_EMAIL = """New database migration patchset discovered!
 
 %(subject)s by %(name)s
 %(url)s
 
 %(change_id)s number %(number)s
-is_migration: %(is_migration)s
 
 The following files are changed in the patchset:
     %(files_list)s"""
@@ -28,7 +27,7 @@ def Handle(change, files):
 
     if is_migration:
         print 'Sending email'
-        utils.send_email('New patchset %s discovered!' % change['id'],
+        utils.send_email('[CI] Patchset %s #%s' %(change['id'], change['number']),
                          'michael.still@rackspace.com',
                          NEW_PATCH_EMAIL
                          % {'change_id': change['id'],
