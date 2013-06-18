@@ -27,7 +27,8 @@ def Handle(change, files):
 
     if is_migration:
         print 'Sending email'
-        utils.send_email('[CI] Patchset %s #%s' %(change['id'], change['number']),
+        utils.send_email('[CI] Patchset %s #%s' %(change['id'],
+                                                  change['number']),
                          'michael.still@rackspace.com',
                          NEW_PATCH_EMAIL
                          % {'change_id': change['id'],
@@ -39,7 +40,8 @@ def Handle(change, files):
                             'files_list': '\n    '.join(files)})
 
         cursor = utils.get_cursor()
-        for dataset in ['nova_trivial_500', 'nova_trivial_6000', 'nova_user_001']:
+        for dataset in ['nova_trivial_500', 'nova_trivial_6000',
+                        'nova_user_001']:
             utils.queue_work(cursor, change['id'], change['number'],
                              'sqlalchemy_migration_%s' % dataset)
 
@@ -53,31 +55,6 @@ def ExecuteWork(cursor, ident, number, workname, worker):
 
     utils.log(cursor, worker, ident, number, workname,
               'Plugin for work queue item found.')
-
-    change = utils.get_patchset_details(cursor, ident, number)
-    conflict = True
-    rewind = 0
-
-    while conflict and rewind < 10:
-        git_repo, conflict = utils.create_git(change['project'], change['refurl'],
-                                              cursor, worker, ident, number, workname,
-                                              rewind)
-        if conflict:
-            utils.log(cursor, worker, ident, number, workname,
-                      'Git merge failure with HEAD~%d' % rewind)
-            rewind += 1
-
-    if conflict:
-        utils.log(cursor, worker, ident, number, workname,
-                  'Git merge failure detected')
-        cursor.execute('update work_queue set done="c" where id="%s" and '
-                       'number=%s and workname="%s";'
-                       % (ident, number, workname))
-        cursor.execute('commit;')
-        return True
-
-    utils.log(cursor, worker, ident, number, workname,
-              'Git checkout created')
 
     # Record the migration names present
     migrations = os.path.join(git_repo,

@@ -24,6 +24,33 @@ if __name__ == '__main__':
             print '=========================================================='
             utils.clear_log(cursor, ident, number, workname)
 
+            # Checkout the patchset
+            change = utils.get_patchset_details(cursor, ident, number)
+            conflict = True
+            rewind = 0
+
+            while conflict and rewind < 10:
+                git_repo, conflict = utils.create_git(change['project'],
+                                                      change['refurl'],
+                                                      cursor, worker, ident,
+                                                      number, workname, rewind)
+                if conflict:
+                    utils.log(cursor, worker, ident, number, workname,
+                              'Git merge failure with HEAD~%d' % rewind)
+                    rewind += 1
+
+            if conflict:
+                utils.log(cursor, worker, ident, number, workname,
+                          'Git merge failure detected')
+                cursor.execute('update work_queue set done="c" '
+                               'where id="%s" and number=%s and workname="%s";'
+                               % (ident, number, workname))
+                cursor.execute('commit;')
+                continue
+
+            utils.log(cursor, worker, ident, number, workname,
+                      'Git checkout created')
+
             # Load plugins
             plugins = []
             for ent in os.listdir('plugins'):
@@ -33,9 +60,11 @@ if __name__ == '__main__':
 
             handled = False
             for plugin in plugins:
-                handled = plugin.ExecuteWork(cursor, ident, number, workname, worker)
+                handled = plugin.ExecuteWork(cursor, ident, number, workname,
+                                             worker)
                 if handled:
-                    cursor.execute('update work_queue set done="y" where id="%s" and '
+                    cursor.execute('update work_queue set done="y" '
+                                   'where id="%s" and '
                                    'number=%s and workname="%s";'
                                   % (ident, number, workname))
                     cursor.execute('commit;')
@@ -44,7 +73,8 @@ if __name__ == '__main__':
             if not handled:
                 utils.log(cursor, worker, ident, number, workname,
                           'No plugin found for work of %s type' % workname)
-                cursor.execute('update work_queue set done="m" where id="%s" and '
+                cursor.execute('update work_queue set done="m" where '
+                               'id="%s" and '
                                'number=%s and workname="%s";'
                                % (ident, number, workname))
                 cursor.execute('commit;')
