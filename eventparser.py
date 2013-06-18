@@ -16,7 +16,7 @@ import utils
 
 
 DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
-FETCH_DAYS = 7
+FETCH_DAYS = 3
 
 
 # Valid states:
@@ -30,31 +30,45 @@ def fetch_log_day(dt):
     new = 0
     cursor = utils.get_cursor()
 
-    for host in ['50.56.178.145', '198.61.229.73']:
-        print '%s Fetching http://%s/output/%s/%s/%s' %(datetime.datetime.now(),
-                                                        host, dt.year, dt.month, dt.day)
-        remote = urllib.urlopen('http://%s/output/%s/%s/%s'
+    for host in ['dfw', 'ord', 'syd']:
+        print ('%s Fetching http://gerrit-stream-logger-%s.stillhq.com/'
+               'output/%s/%s/%s'
+               %(datetime.datetime.now(),
+                 host, dt.year, dt.month, dt.day))
+        remote = urllib.urlopen('http://gerrit-stream-logger-%s.stillhq.com/'
+                                'output/%s/%s/%s'
                                 %(host, dt.year, dt.month, dt.day))
         for line in remote.readlines():
             packet = json.loads(line)
             if packet.get('type') == 'patchset-created':
+                ts = packet['patchSet']['createdOn']
+                ts = datetime.datetime.fromtimestamp(ts)
                 cursor.execute('insert ignore into patchsets '
                                '(id, project, number, refurl, state, subject, '
-                               ' owner_name, url) '
-                               'values (%s, %s, %s, %s, 0, %s, %s, %s);',
+                               ' owner_name, url, timestamp) '
+                               'values (%s, %s, %s, %s, 0, %s, %s, %s, %s);',
                                (packet['change']['id'],
                                 packet['change']['project'],
                                 packet['patchSet']['number'],
                                 packet['patchSet']['ref'],
                                 packet['change']['subject'],
                                 packet['change']['owner']['name'],
-                                packet['change']['url']))
+                                packet['change']['url'],
+                                ts))
                 new += cursor.rowcount
+                cursor.execute('update patchsets set timestamp=%s where '
+                               'id=%s and number=%s;',
+                               (ts,
+                                packet['change']['id'],
+                                packet['patchSet']['number']))
                 cursor.execute('commit;')
 
-        process_patchsets()
-        perform_git_fetches()
-        process_patchsets()
+        try:
+            process_patchsets()
+            perform_git_fetches()
+            process_patchsets()
+        except Exception, e:
+            print '%s Error %s' %(datetime.datetime.now(), e)
 
     return new
 
@@ -67,11 +81,14 @@ def perform_git_fetches():
     for row in cursor:
         repo_path = os.path.join('/srv/git', row['project'])
         if not os.path.exists(repo_path):
-            subcursor.execute('update patchsets set state="m" '
-                              'where id="%s" and number=%d;'
-                              %(row['id'], row['number']))
-            subcursor.execute('commit;')
-            continue
+            utils.clone_git(row['project'])
+
+            if not os.path.exists(repo_path):
+                subcursor.execute('update patchsets set state="m" '
+                                  'where id="%s" and number=%d;'
+                                  %(row['id'], row['number']))
+                subcursor.execute('commit;')
+                continue
 
         repo = git.Repo(repo_path)
         assert repo.bare == False
@@ -113,15 +130,17 @@ def process_patchsets():
     subcursor = utils.get_cursor()
 
     for row in cursor:
-        files = []
-        subcursor.execute('select * from patchset_files where id="%s" and '
-                          'number=%d;'
-                          %(row['id'], row['number']))
-        for subrow in subcursor:
-            files.append(subrow['filename'])
+        age = datetime.datetime.now() - row['timestamp']
+        if age.days < 2:
+            files = []
+            subcursor.execute('select * from patchset_files where id="%s" and '
+                              'number=%d;'
+                              %(row['id'], row['number']))
+            for subrow in subcursor:
+                files.append(subrow['filename'])
 
-        for plugin in plugins:
-            plugin.Handle(row, files)
+            for plugin in plugins:
+                plugin.Handle(row, files)
 
         subcursor.execute('update patchsets set state="p" '
                           'where id="%s" and number=%d;'

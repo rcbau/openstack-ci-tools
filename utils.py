@@ -74,6 +74,20 @@ def _calculate_directories(project, refurl):
     return (git_dir, cow_dir, visible_dir)
 
 
+def clone_git(project):
+    """Clone a git repo master."""
+
+    proj_elems = project.split('/')
+    cmd = ('/srv/openstack-ci-tools/gitclone.sh %s %s'
+           %(proj_elems[0], proj_elems[1]))
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    l = p.stdout.readline()
+    while l:
+        print '%s %s' %(datetime.datetime.now(), l.rstrip())
+        l = p.stdout.readline()
+    return
+
+
 def create_git(project, refurl, cursor, worker, ident, number, workname, rewind):
     """Get a safe COW git checkout of the named refurl."""
 
