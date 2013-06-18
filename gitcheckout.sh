@@ -8,6 +8,8 @@
 cd /srv/git/$2
 git checkout master
 git pull
+git checkout stable/grizzly
+git pull
 
 rm -rf $1 || true
 mkdir -p /srv/git-checkouts/$2
@@ -20,5 +22,6 @@ then
 fi
 
 git checkout -b trunk
+git fetch https://review.openstack.org/$2 $3
+git checkout FETCH_HEAD
 git checkout -b target
-git pull https://review.openstack.org/$2 $3
