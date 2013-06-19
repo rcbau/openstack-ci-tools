@@ -4,7 +4,7 @@ git pull
 
 apt-get update
 apt-get dist-upgrade
-apt-get install git python-pip git-review libxml2-dev libxml2-utils libxslt-dev libmysqlclient-dev pep8 postgresql-server-dev-9.1 python2.7-dev python-coverage python-netaddr python-mysqldb mysql-server
+apt-get install git python-pip git-review libxml2-dev libxml2-utils libxslt-dev libmysqlclient-dev pep8 postgresql-server-dev-9.1 python2.7-dev python-coverage python-netaddr python-mysqldb mysql-server python-git virtualenvwrapper
 
 cp etc/my.cnf /etc/mysql/
 cp etc/usr.sbin.mysqld /etc/apparmor.d/
