@@ -14,7 +14,8 @@ import utils
 UPGRADE_BEGIN_RE = re.compile('\*+ DB upgrade to state of (.*) starts \*+')
 UPGRADE_END_RE = re.compile('\*+ DB upgrade to state of (.*) finished \*+')
 
-GIT_CHECKOUT_RE = re.compile('/srv/git-checkouts/[a-z]+/[a-z]+_refs_changes_[0-9_]+')
+GIT_CHECKOUT_RE = re.compile('/srv/git-checkouts/[a-z]+/'
+                             '[a-z]+_refs_changes_[0-9_]+')
 VENV_PATH_RE = re.compile('/home/mikal/\.virtualenvs/refs_changes_[0-9_]+')
 
 # Remember that the timestamp isn't actually part of the log row!
@@ -22,6 +23,9 @@ MIGRATION_START_RE = re.compile('([0-9]+) -&gt; ([0-9]+)\.\.\.$')
 MIGRATION_END_RE = re.compile('^done$')
 
 NEW_RESULT_EMAIL = """Results for a test are available.
+
+%(name)s:
+    %(results)s
 
 %(url)s"""
 
@@ -36,6 +40,11 @@ def timedelta_as_str(delta):
     remainder = seconds % 60
     return '%d minutes, %d seconds' %((seconds - remainder) / 60,
                                       remainder)
+
+
+def test_name_as_display(test):
+    return test.replace('sqlalchemy_migration_nova', 'nova upgrade').\
+                replace('_', ' ')
 
 
 if __name__ == '__main__':
@@ -175,7 +184,7 @@ if __name__ == '__main__':
 
         test_names.sort()
         for test in test_names:
-            f.write('<td><b>%s</b></td>' % test.replace('sqlalchemy_migration_nova', 'nova upgrade').replace('_', ' '))
+            f.write('<td><b>%s</b></td>' % test_name_as_display(test))
         f.write('</tr>\n')
 
         row_colors = ['', ' bgcolor="#CCCCCC"']
@@ -210,14 +219,29 @@ if __name__ == '__main__':
         f.write('</table></body></html>')
 
     # Email out results
-    cursor.execute('select * from work_queue where done is not null and emailed is null;')
+    cursor.execute('select * from work_queue where done is not null and '
+                   'emailed is null;')
     for row in cursor:
+        result = []
+        try:
+            with open('/var/www/ci/%s/%s/%s/data'
+                      %(row['id'], row['number'], row['workname'])) as f:
+                data = json.loads(f.read())
+                for upgrade in data['order']:
+                    result.append('%s: %s' %(upgrade,
+                                             data['details'][upgrade]))
+        except Exception, e:
+            print 'Error: %s' % e
+
         url = ('http://openstack.stillhq.com/ci/%s/%s/%s/log.html'
                %(row['id'], row['number'], row['workname']))
         utils.send_email('[CI] Patchset %s #%s' %(row['id'], row['number']),
                          'michael.still@rackspace.com',
                          NEW_RESULT_EMAIL
-                         % {'url': url})
-        subcursor.execute('update work_queue set emailed = "y" where id="%s" and number=%s and workname="%s";'
+                         % {'url': url,
+                            'name': test_name_as_display(row['workname']),
+                            'results': '\n    '.join(result)})
+        subcursor.execute('update work_queue set emailed = "y" where id="%s" '
+                          'and number=%s and workname="%s";'
                           %(row['id'], row['number'], row['workname']))
         subcursor.execute('commit;')
