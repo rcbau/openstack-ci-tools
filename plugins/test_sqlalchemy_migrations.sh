@@ -30,6 +30,8 @@ sql_connection = mysql://$3:$4@localhost/$5?charset=utf8
 log_config = /srv/openstack-ci-tools/logging.conf
 EOF
 
+  find $2 -type f -name "*.pyc" -exec rm -f {} \;
+
   nova_manage="$2/bin/nova-manage"
   if [ -e $nova_manage ]
   then

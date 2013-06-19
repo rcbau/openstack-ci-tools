@@ -4,6 +4,7 @@ import datetime
 import git
 import json
 import mimetypes
+import _mysql
 import MySQLdb
 import os
 import shutil
@@ -142,12 +143,29 @@ def clear_log(cursor, ident, number, workname):
     cursor.execute('commit;')
 
 
-def log(cursor, worker, ident, number, workname, log):
+def log(cursor, worker, ident, number, workname, l):
     print '%s %s' % (datetime.datetime.now(), log.rstrip())
-    cursor.execute('insert into work_logs(id, number, workname, worker, log, '
-                   'timestamp) values(%s, %s, %s, %s, %s, now());',
-                   (ident, number, workname, worker, log))
+    batchlog(cursor, worker, ident, number, workname,
+             (datetime.datetime.now(), l))
+
+
+def batchlog(cursor, worker, ident, number, workname, entries):
+    sql = ('insert into work_logs(id, number, workname, worker, log, '
+           'timestamp) values ')
+    values = []
+    for timestamp, log in entries:
+        values.append('("%s", %s, "%s", "%s", "%s", %s)'
+                      %(ident, number, workname, worker,
+                        _mysql.escape_string(log),
+                        datetime_as_sql(timestamp)))
+
+    sql += ', '.join(values)
+    sql += ';'
+
+    cursor.execute(sql)
     cursor.execute('commit;')
+    print '%s Pushed %d log lines to server' %(datetime.datetime.now(),
+                                               len(entries))
     heartbeat(cursor, worker, ident, number, workname)
 
 
@@ -157,3 +175,9 @@ def heartbeat(cursor, worker, ident, number, workname):
                    'worker="%s";'
                    %(ident, number, workname, worker))
     cursor.execute('commit;')
+
+
+def datetime_as_sql(value):
+    return ('STR_TO_DATE("%s", "%s")'
+            %(value.strftime('%a, %d %b %Y %H:%M:%S'),
+              '''%a, %d %b %Y %H:%i:%s'''))
