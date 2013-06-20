@@ -68,6 +68,22 @@ for i in range(0, 5):
             log.append((datetime.datetime.now(), l))
             print '%s %s' %(datetime.datetime.now(), l.rstrip())
 
-    utils.batchlog(cursor, socket.gethostname(), 'performance', i + 1,
-                   'nova_user_001', log)
+    utils.batchlog(cursor, socket.gethostname(),
+                   'performance_%sg_instance' % sys.argv[1], i + 1,
+                   'sqlalchemy_migration_nova_user_001', log)
+
+    cursor = utils.get_cursor()
+    cursor.execute('insert into patchsets(id, project, number, subject, '
+                   'owner_name, timestamp) values("performance_%sg_instance", '
+                   '"openstack/nova", %d, '
+                   '"Test performance of various cloud servers", '
+                   '"Michael Still", "1970-01-01 00:00:00");'
+                   %(sys.argv[1], i + 1))
+    cursor.execute('insert into work_queue(id, number, workname, worker, '
+                   'heartbeat, done, emailed, selectid) '
+                   'values("performance_%sg_instance", %d, '
+                   '"sqlalchemy_migration_nova_user_001", "%s", '
+                   '"1970-01-01 00:00:00", "1", "1", "dummy");'
+                   %(sys.argv[1], i + 1, socket.gethostname()))
+    cursor.execute('commit;')
     time.sleep(900)
