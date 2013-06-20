@@ -47,6 +47,61 @@ def test_name_as_display(test):
                 replace('_', ' ')
 
 
+def write_index(sql, filename):
+    # Write out an index file
+    order = []
+    test_names = []
+    cursor.execute(sql)
+    for row in cursor:
+        key = (row['id'], row['number'])
+      
+        if not key in order:
+            order.append(key)
+        if not row['workname'] in test_names:
+            test_names.append(row['workname'])
+
+    with open(filename, 'w') as f:
+        f.write('<html><head><title>Recent tests</title></head><body>\n'
+                '<p>This page lists recent CI tests run by this system.</p>\n'
+                '<table><tr><td><b>Patchset</b></td>')
+
+        test_names.sort()
+        for test in test_names:
+            f.write('<td><b>%s</b></td>' % test_name_as_display(test))
+        f.write('</tr>\n')
+
+        row_colors = ['', ' bgcolor="#CCCCCC"']
+        row_count = 0
+        for key in order:
+            cursor.execute('select * from patchsets where id="%s" and number=%s;'
+                           %(key[0], key[1]))
+            row = cursor.fetchone()
+            f.write('<tr%(color)s><td><a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
+                    '<font size="-1">%(proj)s<br/>'
+                    '<a href="%(url)s">%(subj)s by %(who)s</a><br/></font></td>'
+                    % {'color': row_colors[row_count % 2],
+                       'id': key[0],
+                       'num': key[1],
+                       'proj': row['project'],
+                       'subj': row['subject'],
+                       'who': row['owner_name'],
+                       'url': row['url']})
+            for test in test_names:
+                test_dir = os.path.join('/var/www/ci', key[0], str(key[1]), test)
+                if os.path.exists(test_dir):
+                    with open(os.path.join(test_dir, 'data'), 'r') as d:
+                        data = json.loads(d.read())
+                    f.write('<td><a href="%s/%s/%s/log.html">log</a><font size="-1">' %(key[0], key[1], test))
+                    for upgrade in data['order']:
+                        f.write('<br/>%s: %s' %(upgrade, data['details'][upgrade]))
+                    f.write('</td>')
+                else:
+                    f.write('<td>&nbsp;</td>')
+            f.write('</tr>\n')
+            row_count += 1
+        f.write('</table></body></html>')
+
+
 if __name__ == '__main__':
     cursor = utils.get_cursor()
     subcursor = utils.get_cursor()
@@ -167,57 +222,10 @@ if __name__ == '__main__':
                     d.write(json.dumps(data))
 
     # Write out an index file
-    order = []
-    test_names = []
-    cursor.execute('select * from work_queue order by heartbeat desc limit 100;')
-    for row in cursor:
-        key = (row['id'], row['number'])
-      
-        if not key in order:
-            order.append(key)
-        if not row['workname'] in test_names:
-            test_names.append(row['workname'])
-
-    with open('/var/www/ci/index.html', 'w') as f:
-        f.write('<html><head><title>Recent tests</title></head><body>\n'
-                '<p>This page lists recent CI tests run by this system.</p>\n'
-                '<table><tr><td><b>Patchset</b></td>')
-
-        test_names.sort()
-        for test in test_names:
-            f.write('<td><b>%s</b></td>' % test_name_as_display(test))
-        f.write('</tr>\n')
-
-        row_colors = ['', ' bgcolor="#CCCCCC"']
-        row_count = 0
-        for key in order:
-            cursor.execute('select * from patchsets where id="%s" and number=%s;'
-                           %(key[0], key[1]))
-            row = cursor.fetchone()
-            f.write('<tr%(color)s><td><a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
-                    '<font size="-1">%(proj)s<br/>'
-                    '<a href="%(url)s">%(subj)s by %(who)s</a><br/></font></td>'
-                    % {'color': row_colors[row_count % 2],
-                       'id': key[0],
-                       'num': key[1],
-                       'proj': row['project'],
-                       'subj': row['subject'],
-                       'who': row['owner_name'],
-                       'url': row['url']})
-            for test in test_names:
-                test_dir = os.path.join('/var/www/ci', key[0], str(key[1]), test)
-                if os.path.exists(test_dir):
-                    with open(os.path.join(test_dir, 'data'), 'r') as d:
-                        data = json.loads(d.read())
-                    f.write('<td><a href="%s/%s/%s/log.html">log</a><font size="-1">' %(key[0], key[1], test))
-                    for upgrade in data['order']:
-                        f.write('<br/>%s: %s' %(upgrade, data['details'][upgrade]))
-                    f.write('</td>')
-                else:
-                    f.write('<td>&nbsp;</td>')
-            f.write('</tr>\n')
-            row_count += 1
-        f.write('</table></body></html>')
+    write_index('select * from work_queue order by heartbeat desc limit 100;',
+                '/var/www/ci/index.html')
+    write_index('select * from work_queue order by heartbeat desc;',
+                '/var/www/ci/all.html')
 
     # Email out results
     cursor.execute('select * from work_queue where done is not null and '
