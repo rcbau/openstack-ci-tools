@@ -10,6 +10,7 @@ git checkout master
 git pull
 git checkout stable/grizzly
 git pull
+git checkout master
 
 rm -rf $1 || true
 mkdir -p /srv/git-checkouts/$2
