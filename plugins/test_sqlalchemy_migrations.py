@@ -2,7 +2,6 @@
 
 import os
 import re
-import subprocess
 
 import utils
 
@@ -81,11 +80,5 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
               'dbuser': flags['test_dbuser'],
               'dbpassword': flags['test_dbpassword'],
               'db': db})
-    print 'Executing script: %s' % cmd
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    l = p.stdout.readline()
-    while l:
-        utils.log(cursor, worker, ident, number, workname, attempt, l)
-        l = p.stdout.readline()
-
+    utils.execute(cursor, worker, ident, number, workname, attempt, cmd)
     return True
