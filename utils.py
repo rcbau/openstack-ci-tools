@@ -7,9 +7,11 @@ import mimetypes
 import _mysql
 import MySQLdb
 import os
+import select
 import shutil
 import smtplib
 import subprocess
+import sys
 import uuid
 
 from email import encoders
@@ -99,12 +101,7 @@ def clone_git(project):
     proj_elems = project.split('/')
     cmd = ('/srv/openstack-ci-tools/gitclone.sh %s %s'
            %(proj_elems[0], proj_elems[1]))
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    l = p.stdout.readline()
-    while l:
-        print '%s %s' %(datetime.datetime.now(), l.rstrip())
-        l = p.stdout.readline()
-    return
+    utils.execute(cursor, worker, ident, number, workname, attempt, cmd)
 
 
 def create_git(project, refurl, cursor, worker, ident, number, workname,
@@ -218,3 +215,56 @@ def datetime_as_sql(value):
     return ('STR_TO_DATE("%s", "%s")'
             %(value.strftime('%a, %d %b %Y %H:%M:%S'),
               '''%a, %d %b %Y %H:%i:%s'''))
+
+
+def execute(cursor, worker, ident, number, workname, attempt, cmd):
+    names = {}
+    lines = {}
+    syslog = os.open('/var/log/syslog', os.O_RDONLY)
+    os.lseek(syslog, 0, os.SEEK_END)
+    names[syslog] = '[syslog] '
+    lines[syslog] = ''
+
+    slow = os.open('/var/log/mysql/slow-queries.log', os.O_RDONLY)
+    os.lseek(slow, 0, os.SEEK_END)
+    names[slow] = '[mysql slow queries] '
+    lines[slow] = ''
+
+    mysql = os.open('/var/log/mysql/error.log', os.O_RDONLY)
+    os.lseek(mysql, 0, os.SEEK_END)
+    names[mysql] = '[mysql error] '
+    lines[mysql] = ''
+
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    names[p.stdout.fileno()] = ''
+    lines[p.stdout.fileno()] = ''
+
+    poll_obj = select.poll()
+    poll_obj.register(p.stdout, select.POLLIN)
+    poll_obj.register(syslog, select.POLLIN)
+    poll_obj.register(slow, select.POLLIN)
+    poll_obj.register(mysql, select.POLLIN)
+
+    last_heartbeat = time.time()
+    while p.poll() is None:
+        for fd, _ in poll_obj.poll(0):
+            lines[fd] += os.read(fd, 1024)
+            if lines[fd].find('\n') != -1:
+                elems = lines[fd].split('\n')
+                for l in elems[:-1]:
+                    l = '%s%s' %(names[fd], l)
+                    log(cursor, worker, ident, number, workname, attempt,
+                        [(datetime.datetime.now(), l)])
+                lines[fd] = elems[-1]
+                last_heartbeat = time.time()
+
+        if time.time() - last_heartbeat > 30:
+            log(cursor, worker, ident, number, workname, attempt,
+                [(datetime.datetime.now(), '[heartbeat]')])
+            last_heartbeat = time.time()
+
+    for fd in lines:
+        if lines[fd]:
+            l = '%s%s' %(names[fd], l)
+            log(cursor, worker, ident, number, workname, attempt,
+                [(datetime.datetime.now(), l)])
