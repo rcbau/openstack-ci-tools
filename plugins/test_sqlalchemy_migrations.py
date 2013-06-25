@@ -49,11 +49,12 @@ def Handle(change, files):
 MIGRATION_NAME_RE = re.compile('([0-9]+)_(.*)\.py')
 
 
-def ExecuteWork(cursor, ident, number, workname, worker, attempt):
+def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
+                change):
     if not workname.startswith('sqlalchemy_migration_'):
         return False
 
-    utils.log(cursor, worker, ident, number, workname,
+    utils.log(cursor, worker, ident, number, workname, attempt,
               'Plugin for work queue item found.')
 
     # Record the migration names present
@@ -84,7 +85,7 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:
-        utils.log(cursor, worker, ident, number, workname, l)
+        utils.log(cursor, worker, ident, number, workname, attempt, l)
         l = p.stdout.readline()
 
     return True

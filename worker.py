@@ -34,7 +34,8 @@ if __name__ == '__main__':
                 git_repo, conflict = utils.create_git(change['project'],
                                                       change['refurl'],
                                                       cursor, worker, ident,
-                                                      number, workname, rewind)
+                                                      number, workname, rewind,
+                                                      attempt)
                 if conflict:
                     utils.log(cursor, worker, ident, number, workname, attempt,
                               'Git merge failure with HEAD~%d' % rewind)
@@ -64,14 +65,14 @@ if __name__ == '__main__':
             handled = False
             for plugin in plugins:
                 handled = plugin.ExecuteWork(cursor, ident, number, workname,
-                                             worker, attempt)
+                                             worker, attempt, git_repo, change)
                 if handled:
                     cursor.execute('update work_queue set done="y" '
                                    'where id="%s" and '
                                    'number=%s and workname="%s" '
                                    'and attempt %s;'
                                   % (ident, number, workname,
-                                     utils.format_attempt_critera(attempt)))
+                                     utils.format_attempt_criteria(attempt)))
                     cursor.execute('commit;')
                     break
 

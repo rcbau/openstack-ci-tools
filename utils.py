@@ -102,7 +102,7 @@ def clone_git(project):
 
 
 def create_git(project, refurl, cursor, worker, ident, number, workname,
-               rewind):
+               rewind, attempt):
     """Get a safe COW git checkout of the named refurl."""
 
     conflict = False
@@ -118,7 +118,7 @@ def create_git(project, refurl, cursor, worker, ident, number, workname,
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:
-        log(cursor, worker, ident, number, workname, l)
+        log(cursor, worker, ident, number, workname, attempt, l)
         if l.find('CONFLICT') != -1:
             conflict = True
         l = p.stdout.readline()
@@ -155,14 +155,15 @@ def clear_log(cursor, ident, number, workname, attempt):
     cursor.execute('delete from work_logs where id="%s" and number=%s and '
                    'workname="%s" and attempt %s;'
                    %(ident, number, workname,
-                     utils.format_attempt_criteria(attempt)))
+                     format_attempt_criteria(attempt)))
     cursor.execute('commit;')
 
 
 def log(cursor, worker, ident, number, workname, attempt, l):
-    print '%s %s' % (datetime.datetime.now(), log.rstrip())
+    timestamp = datetime.datetime.now()
+    print '%s %s' % (timestamp, l.rstrip())
     batchlog(cursor, worker, ident, number, workname, attempt,
-             (datetime.datetime.now(), l))
+             [(timestamp, l)])
 
 
 def batchlog(cursor, worker, ident, number, workname, attempt, entries):
@@ -174,16 +175,18 @@ def batchlog(cursor, worker, ident, number, workname, attempt, entries):
                       %(ident, number, workname, worker,
                         _mysql.escape_string(log),
                         datetime_as_sql(timestamp),
-                        utils.format_attempt_insert(attempt)))
+                        format_attempt_insert(attempt)))
 
     sql += ', '.join(values)
     sql += ';'
 
     cursor.execute(sql)
     cursor.execute('commit;')
-    print '%s Pushed %d log lines to server' %(datetime.datetime.now(),
-                                               len(entries))
-    heartbeat(cursor, worker, ident, number, workname)
+
+    if len(entries) > 1:
+        print '%s Pushed %d log lines to server' %(datetime.datetime.now(),
+                                                   len(entries))
+    heartbeat(cursor, worker, ident, number, workname, attempt)
 
 
 def heartbeat(cursor, worker, ident, number, workname, attempt):
@@ -191,7 +194,7 @@ def heartbeat(cursor, worker, ident, number, workname, attempt):
                    'id="%s" and number=%s and workname="%s" and '
                    'worker="%s" and attempt %s;'
                    %(ident, number, workname, worker,
-                     utils.format_attempt_criteria(attempt)))
+                     format_attempt_criteria(attempt)))
     cursor.execute('commit;')
 
 
