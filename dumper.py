@@ -24,10 +24,9 @@ MIGRATION_END_RE = re.compile('^done$')
 
 NEW_RESULT_EMAIL = """Results for a test are available.
 
-%(name)s:
     %(results)s
 
-%(url)s"""
+"""
 
 
 def timedelta_as_str(delta):
@@ -61,9 +60,28 @@ def write_index(sql, filename):
             test_names.append(row['workname'])
 
     with open(filename, 'w') as f:
+        cursor.execute('select count(*) from patchsets;')
+        total = cursor.fetchone()['count(*)']
+        cursor.execute('select timestamp from patchsets order by timestamp desc '
+                       'limit 1;')
+        recent = cursor.fetchone()['timestamp']
+        cursor.execute('select count(*) from work_queue where done="y";')
+        jobs_done = cursor.fetchone()['count(*)']
+        cursor.execute('select count(*) from work_queue where done is null;')
+        jobs_queued = cursor.fetchone()['count(*)']
+
         f.write('<html><head><title>Recent tests</title></head><body>\n'
                 '<p>This page lists recent CI tests run by this system.</p>\n'
-                '<table><tr><td><b>Patchset</b></td>')
+                '<p>There are currently %(total)s patchsets tracked, with '
+                '%(jobs_done)s jobs having been run. There are %(jobs_queued)s '
+                'jobs queued to run. The most recent patchset is from '
+                '%(recent)s. This page was last updated at %(now)s.</p>'
+                '<table><tr><td><b>Patchset</b></td>'
+                %{'total': total,
+                  'jobs_done': jobs_done,
+                  'jobs_queued': jobs_queued,
+                  'recent': recent,
+                  'now': datetime.datetime.now()})
 
         test_names.sort()
         for test in test_names:
@@ -73,16 +91,19 @@ def write_index(sql, filename):
         row_colors = ['', ' bgcolor="#CCCCCC"']
         row_count = 0
         for key in order:
-            cursor.execute('select * from patchsets where id="%s" and number=%s;'
+            cursor.execute('select * from patchsets where id="%s" and number=%s '
+                           'order by timestamp desc;'
                            %(key[0], key[1]))
             row = cursor.fetchone()
-            f.write('<tr%(color)s><td><a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
-                    '<font size="-1">%(proj)s<br/>'
+            f.write('<tr%(color)s><td>'
+                    '<a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
+                    '<font size="-1">%(proj)s at %(timestamp)s<br/>'
                     '<a href="%(url)s">%(subj)s by %(who)s</a><br/></font></td>'
                     % {'color': row_colors[row_count % 2],
                        'id': key[0],
                        'num': key[1],
                        'proj': row['project'],
+                       'timestamp': row['timestamp'],
                        'subj': row['subject'],
                        'who': row['owner_name'],
                        'url': row['url']})
@@ -91,10 +112,18 @@ def write_index(sql, filename):
                 if os.path.exists(test_dir):
                     with open(os.path.join(test_dir, 'data'), 'r') as d:
                         data = json.loads(d.read())
-                    f.write('<td><a href="%s/%s/%s/log.html">log</a><font size="-1">' %(key[0], key[1], test))
+                    color = data.get('color', '')
+                    f.write('<td %s><a href="%s/%s/%s/log.html">log</a>'
+                            '<font size="-1">' %(color, key[0], key[1], test))
                     for upgrade in data['order']:
-                        f.write('<br/>%s: %s' %(upgrade, data['details'][upgrade]))
-                    f.write('</td>')
+                        f.write('<br/>%s: %s' %(upgrade,
+                                                data['details'][upgrade]))
+
+                    cursor.execute('select * from work_queue where id="%s" and '
+                                   'number=%s and workname="%s";'
+                                   %(key[0], key[1], test))
+                    row = cursor.fetchone()
+                    f.write('<br/>Run at %s</font></td>' % row['heartbeat'])
                 else:
                     f.write('<td>&nbsp;</td>')
             f.write('</tr>\n')
@@ -205,13 +234,26 @@ if __name__ == '__main__':
 
                 display_upgrades = []
                 data = {'order': upgrades,
-                        'details' : {}}
+                        'details' : {},
+                        'details_seconds': {}}
                 for upgrade in upgrades:
                     time_str = timedelta_as_str(upgrade_times[upgrade])
-                    display_upgrades.append('<li><a href="#%(name)s">Upgrade to %(name)s -- %(elapsed)s</a>'
+                    display_upgrades.append('<li><a href="#%(name)s">'
+                                            'Upgrade to %(name)s -- '
+                                            '%(elapsed)s</a>'
                                             % {'name': upgrade,
                                                'elapsed': time_str})
                     data['details'][upgrade] = time_str
+                    data['details_seconds'][upgrade] = \
+                        upgrade_times[upgrade].seconds
+                    data['color'] = ''
+
+                    print '    %s (%s)' %(upgrade, upgrade_times[upgrade].seconds)
+                    if upgrade == 'patchset':
+                        if upgrade_times[upgrade].seconds > 30:
+                            data['color'] = 'bgcolor="#FA5858"'
+                            data['result'] = 'Failed'
+                            print '        Failed'
 
                 f.write('<ul>%s</ul>' % ('\n'.join(display_upgrades)))
                 f.write('<pre><code>\n')
@@ -227,30 +269,52 @@ if __name__ == '__main__':
     write_index('select * from work_queue order by heartbeat desc;',
                 '/var/www/ci/all.html')
 
-    # Email out results
+    # Email out results, but only if all tests complete
+    candidates = {}
     cursor.execute('select * from work_queue where done is not null and '
                    'emailed is null;')
     for row in cursor:
-        result = []
-        try:
-            with open('/var/www/ci/%s/%s/%s/data'
-                      %(row['id'], row['number'], row['workname'])) as f:
-                data = json.loads(f.read())
-                for upgrade in data['order']:
-                    result.append('%s: %s' %(upgrade,
-                                             data['details'][upgrade]))
-        except Exception, e:
-            print 'Error: %s' % e
+        candidates[(row['id'], row['number'])] = True
 
-        url = ('http://openstack.stillhq.com/ci/%s/%s/%s/log.html'
-               %(row['id'], row['number'], row['workname']))
-        utils.send_email('[CI] Patchset %s #%s' %(row['id'], row['number']),
-                         'michael.still@rackspace.com',
+    for ident, number in candidates:
+        cursor.execute('select count(*) from work_queue where id="%s" and '
+                       'number=%s and done is null;'
+                       %(ident, number))
+        row = cursor.fetchone()
+        if row['count(*)'] > 0:
+            print '    %s #%s not complete' %(ident, number)
+            continue
+
+        # If we get here, then we owe people an email about a complete run of
+        # tests
+        result = []
+        worknames = []
+        cursor.execute('select * from work_queue where id="%s" and number=%s '
+                       'and done="y";'
+                       %(ident, number))
+        for row in cursor:
+            result.append('%s:' % test_name_as_display(row['workname']))
+            worknames.append(row['workname'])
+            try:
+                with open('/var/www/ci/%s/%s/%s/data'
+                          %(row['id'], row['number'], row['workname'])) as f:
+                     data = json.loads(f.read())
+                     for upgrade in data['order']:
+                         result.append('    %s: %s' %(upgrade,
+                                                      data['details'][upgrade]))
+            except Exception, e:
+                print 'Error: %s' % e
+
+            url = ('http://openstack.stillhq.com/ci/%s/%s/%s/log.html'
+                   %(row['id'], row['number'], row['workname']))
+            result.append('    Log URL: %s' % url)
+            result.append('')
+
+        utils.send_email('Patchset %s #%s' %(row['id'], row['number']),
+                         'ci@lists.stillhq.com',
                          NEW_RESULT_EMAIL
-                         % {'url': url,
-                            'name': test_name_as_display(row['workname']),
-                            'results': '\n    '.join(result)})
+                         % {'results': '\n'.join(result)})
         subcursor.execute('update work_queue set emailed = "y" where id="%s" '
-                          'and number=%s and workname="%s";'
-                          %(row['id'], row['number'], row['workname']))
+                          'and number=%s and workname in ("%s");'
+                          %(row['id'], row['number'], '", "'.join(worknames)))
         subcursor.execute('commit;')
