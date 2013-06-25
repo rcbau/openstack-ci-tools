@@ -89,12 +89,14 @@ def clone_git(project):
     return
 
 
-def create_git(project, refurl, cursor, worker, ident, number, workname, rewind):
+def create_git(project, refurl, cursor, worker, ident, number, workname,
+               rewind):
     """Get a safe COW git checkout of the named refurl."""
 
     conflict = False
     git_dir, cow_dir, visible_dir = _calculate_directories(project, refurl)
-    cmd = ('/srv/openstack-ci-tools/gitcheckout.sh "%(visible_dir)s" "%(project)s" "%(refurl)s" %(rewind)s 2>&1'
+    cmd = ('/srv/openstack-ci-tools/gitcheckout.sh "%(visible_dir)s" '
+           '"%(project)s" "%(refurl)s" %(rewind)s 2>&1'
            %{'cow_dir': cow_dir,
              'git_dir': git_dir,
              'visible_dir': visible_dir,
