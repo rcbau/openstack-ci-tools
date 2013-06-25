@@ -141,6 +141,8 @@ if __name__ == '__main__':
     for row in cursor:
         path = os.path.join('/var/www/ci', row['id'], str(row['number']),
                             row['workname'])
+        path += utils.format_attempt_path(row['attempt'])
+
         datapath = os.path.join(path, 'data')
         workerpath = os.path.join(path, 'worker')
         worker = None

@@ -48,6 +48,12 @@ def format_attempt_criteria(attempt):
     return '= %s' % attempt
 
 
+def format_attempt_path(attempt):
+    if attempt is None or attempt == 0:
+        return ''
+    return '_%s' % attempt
+
+
 def send_email(subject, mailto, body):
     """Send an email."""
 
