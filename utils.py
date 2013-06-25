@@ -36,6 +36,18 @@ def get_cursor():
     return cursor
 
 
+def format_attempt_insert(attempt):
+    if attempt is None or attempt == 0:
+        return 'null'
+    return attempt
+
+
+def format_attempt_criteria(attempt):
+    if attempt is None or attempt == 0:
+        return 'is null'
+    return '= %s' % attempt
+
+
 def send_email(subject, mailto, body):
     """Send an email."""
 
@@ -113,10 +125,12 @@ def create_git(project, refurl, cursor, worker, ident, number, workname,
     return visible_dir, conflict
 
 
-def queue_work(cursor, ident, number, workname):
-    cursor.execute('insert ignore into work_queue(id, number, workname) values '
-                   '("%s", %d, "%s");'
-                   %(ident, number, workname))
+def queue_work(cursor, ident, number, workname, attempt=0):
+    cursor.execute('insert ignore into work_queue'
+                   '(id, number, workname, attempt) values '
+                   '("%s", %d, "%s", %s);'
+                   %(ident, number, workname,
+                     formatted_attempt_insert(attempt)))
     cursor.execute('commit;')
 
 
@@ -135,31 +149,32 @@ def dequeue_work(cursor, worker):
     if cursor.rowcount == 0:
         raise NoWorkFound()
     row = cursor.fetchone()
-    return (row['id'], row['number'], row['workname'])
+    return (row['id'], row['number'], row['workname'], row['attempt'])
 
-
-def clear_log(cursor, ident, number, workname):
+def clear_log(cursor, ident, number, workname, attempt):
     cursor.execute('delete from work_logs where id="%s" and number=%s and '
-                   'workname="%s";'
-                   %(ident, number, workname))
+                   'workname="%s" and attempt %s;'
+                   %(ident, number, workname,
+                     utils.format_attempt_criteria(attempt)))
     cursor.execute('commit;')
 
 
-def log(cursor, worker, ident, number, workname, l):
+def log(cursor, worker, ident, number, workname, attempt, l):
     print '%s %s' % (datetime.datetime.now(), log.rstrip())
-    batchlog(cursor, worker, ident, number, workname,
+    batchlog(cursor, worker, ident, number, workname, attempt,
              (datetime.datetime.now(), l))
 
 
-def batchlog(cursor, worker, ident, number, workname, entries):
+def batchlog(cursor, worker, ident, number, workname, attempt, entries):
     sql = ('insert into work_logs(id, number, workname, worker, log, '
-           'timestamp) values ')
+           'timestamp, attempt) values ')
     values = []
     for timestamp, log in entries:
-        values.append('("%s", %s, "%s", "%s", "%s", %s)'
+        values.append('("%s", %s, "%s", "%s", "%s", %s, %s)'
                       %(ident, number, workname, worker,
                         _mysql.escape_string(log),
-                        datetime_as_sql(timestamp)))
+                        datetime_as_sql(timestamp),
+                        utils.format_attempt_insert(attempt)))
 
     sql += ', '.join(values)
     sql += ';'
@@ -171,11 +186,12 @@ def batchlog(cursor, worker, ident, number, workname, entries):
     heartbeat(cursor, worker, ident, number, workname)
 
 
-def heartbeat(cursor, worker, ident, number, workname):
+def heartbeat(cursor, worker, ident, number, workname, attempt):
     cursor.execute('update work_queue set heartbeat=NOW() where '
                    'id="%s" and number=%s and workname="%s" and '
-                   'worker="%s";'
-                   %(ident, number, workname, worker))
+                   'worker="%s" and attempt %s;'
+                   %(ident, number, workname, worker,
+                     utils.format_attempt_criteria(attempt)))
     cursor.execute('commit;')
 
 

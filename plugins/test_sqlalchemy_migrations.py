@@ -49,7 +49,7 @@ def Handle(change, files):
 MIGRATION_NAME_RE = re.compile('([0-9]+)_(.*)\.py')
 
 
-def ExecuteWork(cursor, ident, number, workname, worker):
+def ExecuteWork(cursor, ident, number, workname, worker, attempt):
     if not workname.startswith('sqlalchemy_migration_'):
         return False
 

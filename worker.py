@@ -20,9 +20,10 @@ if __name__ == '__main__':
 
     try:
         while True:
-            (ident, number, workname) = utils.dequeue_work(cursor, worker)
+            (ident, number, workname, attempt) = utils.dequeue_work(cursor,
+                                                                    worker)
             print '=========================================================='
-            utils.clear_log(cursor, ident, number, workname)
+            utils.clear_log(cursor, ident, number, workname, attempt)
 
             # Checkout the patchset
             change = utils.get_patchset_details(cursor, ident, number)
@@ -35,20 +36,22 @@ if __name__ == '__main__':
                                                       cursor, worker, ident,
                                                       number, workname, rewind)
                 if conflict:
-                    utils.log(cursor, worker, ident, number, workname,
+                    utils.log(cursor, worker, ident, number, workname, attempt,
                               'Git merge failure with HEAD~%d' % rewind)
                     rewind += 1
 
             if conflict:
-                utils.log(cursor, worker, ident, number, workname,
+                utils.log(cursor, worker, ident, number, workname, attempt,
                           'Git merge failure detected')
                 cursor.execute('update work_queue set done="c" '
-                               'where id="%s" and number=%s and workname="%s";'
-                               % (ident, number, workname))
+                               'where id="%s" and number=%s and workname="%s" '
+                               'and attempt %s;'
+                               % (ident, number, workname,
+                                  utils.format_attempt_criteria(attempt)))
                 cursor.execute('commit;')
                 continue
 
-            utils.log(cursor, worker, ident, number, workname,
+            utils.log(cursor, worker, ident, number, workname, attempt,
                       'Git checkout created')
 
             # Load plugins
@@ -61,22 +64,25 @@ if __name__ == '__main__':
             handled = False
             for plugin in plugins:
                 handled = plugin.ExecuteWork(cursor, ident, number, workname,
-                                             worker)
+                                             worker, attempt)
                 if handled:
                     cursor.execute('update work_queue set done="y" '
                                    'where id="%s" and '
-                                   'number=%s and workname="%s";'
-                                  % (ident, number, workname))
+                                   'number=%s and workname="%s" '
+                                   'and attempt %s;'
+                                  % (ident, number, workname,
+                                     utils.format_attempt_critera(attempt)))
                     cursor.execute('commit;')
                     break
 
             if not handled:
-                utils.log(cursor, worker, ident, number, workname,
+                utils.log(cursor, worker, ident, number, workname, attempt,
                           'No plugin found for work of %s type' % workname)
                 cursor.execute('update work_queue set done="m" where '
-                               'id="%s" and '
-                               'number=%s and workname="%s";'
-                               % (ident, number, workname))
+                               'id="%s" and number=%s and workname="%s" and '
+                               'attempt %s;'
+                               % (ident, number, workname,
+                                  utils.format_attempt_criteria(attempt)))
                 cursor.execute('commit;')
 
     except utils.NoWorkFound:
