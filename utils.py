@@ -167,15 +167,23 @@ def log(cursor, worker, ident, number, workname, attempt, l):
 
 
 def batchlog(cursor, worker, ident, number, workname, attempt, entries):
-    sql = ('insert into work_logs(id, number, workname, worker, log, '
-           'timestamp, attempt) values ')
-    values = []
-    for timestamp, log in entries:
-        values.append('("%s", %s, "%s", "%s", "%s", %s, %s)'
-                      %(ident, number, workname, worker,
-                        _mysql.escape_string(log),
-                        datetime_as_sql(timestamp),
-                        format_attempt_insert(attempt)))
+    if not os.path.exists('/srv/logs'):
+        os.makedirs('/srv/logs')
+
+    logpath=os.path.join('/srv/logs', ident,
+                         number + format_attempt_path(attempt) + '.log')
+
+    with open(logpath, 'a+') as f:
+        sql = ('insert into work_logs(id, number, workname, worker, log, '
+               'timestamp, attempt) values ')
+        values = []
+        for timestamp, log in entries:
+            values.append('("%s", %s, "%s", "%s", "%s", %s, %s)'
+                          %(ident, number, workname, worker,
+                            _mysql.escape_string(log),
+                            datetime_as_sql(timestamp),
+                            format_attempt_insert(attempt)))
+        f.write('%s %s\n' %(timestamp, log.rstrip()))
 
     sql += ', '.join(values)
     sql += ';'
