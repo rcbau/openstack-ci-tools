@@ -173,11 +173,13 @@ def log(cursor, worker, ident, number, workname, attempt, l):
 
 
 def batchlog(cursor, worker, ident, number, workname, attempt, entries):
-    if not os.path.exists('/srv/logs'):
-        os.makedirs('/srv/logs')
+    logdir = os.path.join('/srv/logs', ident)
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
 
-    logpath=os.path.join('/srv/logs', ident,
-                         number + format_attempt_path(attempt) + '.log')
+    logpath = os.path.join(logdir,
+                           (str(number) + format_attempt_path(attempt) +
+                            '_' + workname + '.log'))
 
     with open(logpath, 'a+') as f:
         sql = ('insert into work_logs(id, number, workname, worker, log, '
