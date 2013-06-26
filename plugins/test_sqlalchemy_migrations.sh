@@ -39,6 +39,7 @@ EOF
     echo "***** DB upgrade to state of $1 starts *****"
     python $nova_manage --config-file $2/nova-$1.conf db sync
   else
+    python setup.py clean
     python setup.py develop
     echo "***** DB upgrade to state of $1 starts *****"
     nova-manage --config-file $2/nova-$1.conf db sync
@@ -110,3 +111,4 @@ set +x
 echo "Cleaning up virtual env"
 deactivate
 rmvirtualenv $1
+echo "done" > /srv/logs/$1

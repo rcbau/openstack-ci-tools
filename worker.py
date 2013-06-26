@@ -87,5 +87,7 @@ if __name__ == '__main__':
                                   utils.format_attempt_criteria(attempt)))
                 cursor.execute('commit;')
 
+            break
+
     except utils.NoWorkFound:
         pass

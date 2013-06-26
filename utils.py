@@ -228,43 +228,58 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
 
     slow = os.open('/var/log/mysql/slow-queries.log', os.O_RDONLY)
     os.lseek(slow, 0, os.SEEK_END)
-    names[slow] = '[mysql slow queries] '
+    names[slow] = '[sqlslo] '
     lines[slow] = ''
 
     mysql = os.open('/var/log/mysql/error.log', os.O_RDONLY)
     os.lseek(mysql, 0, os.SEEK_END)
-    names[mysql] = '[mysql error] '
+    names[mysql] = '[sqlerr] '
     lines[mysql] = ''
 
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    names[p.stdout.fileno()] = ''
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    names[p.stdout.fileno()] = '[stdout] '
     lines[p.stdout.fileno()] = ''
+    names[p.stderr.fileno()] = '[stderr] '
+    lines[p.stderr.fileno()] = ''
 
     poll_obj = select.poll()
-    poll_obj.register(p.stdout, select.POLLIN)
+    poll_obj.register(p.stdout, select.POLLIN | select.POLLHUP)
+    poll_obj.register(p.stderr, select.POLLIN | select.POLLHUP)
     poll_obj.register(syslog, select.POLLIN)
     poll_obj.register(slow, select.POLLIN)
     poll_obj.register(mysql, select.POLLIN)
 
     last_heartbeat = time.time()
-    while p.poll() is None:
-        for fd, _ in poll_obj.poll(0):
-            lines[fd] += os.read(fd, 1024)
-            if lines[fd].find('\n') != -1:
-                elems = lines[fd].split('\n')
-                for l in elems[:-1]:
-                    l = '%s%s' %(names[fd], l)
-                    log(cursor, worker, ident, number, workname, attempt, l)
-                lines[fd] = elems[-1]
-                last_heartbeat = time.time()
+    def process(fd):
+        lines[fd] += os.read(fd, 1024 * 1024)
+        if lines[fd].find('\n') != -1:
+            elems = lines[fd].split('\n')
+            for l in elems[:-1]:
+                l = '%s%s' %(names[fd], l)
+                log(cursor, worker, ident, number, workname, attempt, l)
+            lines[fd] = elems[-1]
+            last_heartbeat = time.time()
+
+    phase = 0
+    while phase < 2:
+        for fd, flag in poll_obj.poll(0):
+            process(fd)
 
         if time.time() - last_heartbeat > 30:
             log(cursor, worker, ident, number, workname, attempt, '[heartbeat]')
             last_heartbeat = time.time()
 
+        if p.poll() is not None:
+            phase += 1
+            print 'Phase advanced to %s' % phase
+
+    process(p.stdout.fileno())
+    process(p.stderr.fileno())
+
     for fd in lines:
         if lines[fd]:
-            l = '%s%s' %(names[fd], l)
+            l = '%s%s' %(names[fd], lines[fd])
             log(cursor, worker, ident, number, workname, attempt, l)
 
     log(cursor, worker, ident, number, workname, attempt,

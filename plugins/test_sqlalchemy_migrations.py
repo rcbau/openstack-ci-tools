@@ -73,8 +73,7 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
     flags = utils.get_config()
     db = workname[len('sqlalchemy_migration_'):]
     cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
-           '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s '
-           '2>&1'
+           '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s'
            % {'ref_url': safe_refurl,
               'git_repo': git_repo,
               'dbuser': flags['test_dbuser'],
