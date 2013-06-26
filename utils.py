@@ -160,6 +160,7 @@ def clear_log(cursor, ident, number, workname, attempt):
                    'workname="%s" and attempt %s;'
                    %(ident, number, workname,
                      format_attempt_criteria(attempt)))
+    print 'Deleted %d old log lines' % cursor.rowcount
     cursor.execute('commit;')
 
 
