@@ -236,16 +236,13 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
     names[mysql] = '[sqlerr] '
     lines[mysql] = ''
 
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    names[p.stdout.fileno()] = '[stdout] '
+    cmd += ' 2>&1'
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    names[p.stdout.fileno()] = ''
     lines[p.stdout.fileno()] = ''
-    names[p.stderr.fileno()] = '[stderr] '
-    lines[p.stderr.fileno()] = ''
 
     poll_obj = select.poll()
     poll_obj.register(p.stdout, select.POLLIN | select.POLLHUP)
-    poll_obj.register(p.stderr, select.POLLIN | select.POLLHUP)
     poll_obj.register(syslog, select.POLLIN)
     poll_obj.register(slow, select.POLLIN)
     poll_obj.register(mysql, select.POLLIN)
@@ -275,7 +272,6 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
             print 'Phase advanced to %s' % phase
 
     process(p.stdout.fileno())
-    process(p.stderr.fileno())
 
     for fd in lines:
         if lines[fd]:
