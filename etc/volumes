@@ -1,0 +1,4 @@
+#!/bin/sh
+
+mount /dev/mapper/srv-srv /srv
+mount /dev/mapper/srv-mysql /srv/mysql
