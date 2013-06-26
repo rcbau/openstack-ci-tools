@@ -41,13 +41,13 @@ def get_cursor():
 
 def format_attempt_insert(attempt):
     if attempt is None or attempt == 0:
-        return 'null'
+        return '0'
     return attempt
 
 
 def format_attempt_criteria(attempt):
     if attempt is None or attempt == 0:
-        return 'is null'
+        return '= 0'
     return '= %s' % attempt
 
 
