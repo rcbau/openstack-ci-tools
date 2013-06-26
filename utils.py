@@ -12,6 +12,7 @@ import shutil
 import smtplib
 import subprocess
 import sys
+import time
 import uuid
 
 from email import encoders
@@ -253,18 +254,18 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
                 elems = lines[fd].split('\n')
                 for l in elems[:-1]:
                     l = '%s%s' %(names[fd], l)
-                    log(cursor, worker, ident, number, workname, attempt,
-                        [(datetime.datetime.now(), l)])
+                    log(cursor, worker, ident, number, workname, attempt, l)
                 lines[fd] = elems[-1]
                 last_heartbeat = time.time()
 
         if time.time() - last_heartbeat > 30:
-            log(cursor, worker, ident, number, workname, attempt,
-                [(datetime.datetime.now(), '[heartbeat]')])
+            log(cursor, worker, ident, number, workname, attempt, '[heartbeat]')
             last_heartbeat = time.time()
 
     for fd in lines:
         if lines[fd]:
             l = '%s%s' %(names[fd], l)
-            log(cursor, worker, ident, number, workname, attempt,
-                [(datetime.datetime.now(), l)])
+            log(cursor, worker, ident, number, workname, attempt, l)
+
+    log(cursor, worker, ident, number, workname, attempt,
+        '[script exit code = %d]' % p.returncode)

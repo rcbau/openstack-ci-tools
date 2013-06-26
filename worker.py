@@ -74,6 +74,7 @@ if __name__ == '__main__':
                                   % (ident, number, workname,
                                      utils.format_attempt_criteria(attempt)))
                     cursor.execute('commit;')
+                    print 'Marked %s %s %s (%s) done' %(ident, number, workname, attempt)
                     break
 
             if not handled:
@@ -85,6 +86,8 @@ if __name__ == '__main__':
                                % (ident, number, workname,
                                   utils.format_attempt_criteria(attempt)))
                 cursor.execute('commit;')
+
+            break
 
     except utils.NoWorkFound:
         pass

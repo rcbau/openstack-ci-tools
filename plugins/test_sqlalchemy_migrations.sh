@@ -14,6 +14,7 @@ pip_requires() {
   fi
   echo "Install pip requirements from $requires"
   pip install -q -r $requires
+  echo "Requirements installed"
 }
 
 db_sync() {
@@ -69,6 +70,7 @@ set +x
 echo "Setting up virtual env"
 source ~/.bashrc
 source /etc/bash_completion.d/virtualenvwrapper
+rm -rf ~/virtualenvs/$1
 mkvirtualenv $1
 toggleglobalsitepackages
 set -x
@@ -101,7 +103,6 @@ fi
 # Now run the patchset
 echo "Now test the patchset"
 pip_requires
-
 db_sync "patchset" $2 $3 $4 $5
 
 # Cleanup virtual env
