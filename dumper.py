@@ -62,6 +62,9 @@ def write_index(sql, filename):
     with open(filename, 'w') as f:
         cursor.execute('select count(*) from patchsets;')
         total = cursor.fetchone()['count(*)']
+        cursor.execute('select count(*) from patchset_rechecks;')
+        rechecks = cursor.fetchone()['count(*)']
+
         cursor.execute('select timestamp from patchsets order by timestamp desc '
                        'limit 1;')
         recent = cursor.fetchone()['timestamp']
@@ -72,12 +75,14 @@ def write_index(sql, filename):
 
         f.write('<html><head><title>Recent tests</title></head><body>\n'
                 '<p>This page lists recent CI tests run by this system.</p>\n'
-                '<p>There are currently %(total)s patchsets tracked, with '
+                '<p>There are currently %(total)s patchsets tracked '
+                'and %(retries)s rechecks, with '
                 '%(jobs_done)s jobs having been run. There are %(jobs_queued)s '
                 'jobs queued to run. The most recent patchset is from '
                 '%(recent)s. This page was last updated at %(now)s.</p>'
                 '<table><tr><td><b>Patchset</b></td>'
                 %{'total': total,
+                  'retries': rechecks,
                   'jobs_done': jobs_done,
                   'jobs_queued': jobs_queued,
                   'recent': recent,
