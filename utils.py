@@ -47,8 +47,8 @@ def format_attempt_insert(attempt):
 
 def format_attempt_criteria(attempt):
     if attempt is None or attempt == 0:
-        return '= 0'
-    return '= %s' % attempt
+        return '(attempt=0 or attempt is null)'
+    return 'attempt=%s' % attempt
 
 
 def format_attempt_path(attempt):

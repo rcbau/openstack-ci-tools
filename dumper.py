@@ -92,7 +92,7 @@ def write_index(sql, filename):
         row_count = 0
         for key in order:
             cursor.execute('select * from patchsets where id="%s" and number=%s '
-                           'order by timestamp desc;'
+                           'order by timestamp desc limit 1;'
                            %(key[0], key[1]))
             row = cursor.fetchone()
             f.write('<tr%(color)s><td>'
@@ -109,12 +109,23 @@ def write_index(sql, filename):
                        'url': row['url']})
             for test in test_names:
                 test_dir = os.path.join('/var/www/ci', key[0], str(key[1]), test)
+
+                # Find attempts
+                attempt = 0
+                while os.path.exists(test_dir + utils.format_attempt_path(attempt)):
+                    attempt += 1
+                attempt -= 1
+
+                if attempt > 0:
+                    test_dir += utils.format_attempt_path(attempt)
+
                 if os.path.exists(test_dir):
                     with open(os.path.join(test_dir, 'data'), 'r') as d:
                         data = json.loads(d.read())
                     color = data.get('color', '')
-                    f.write('<td %s><a href="%s/%s/%s/log.html">log</a>'
-                            '<font size="-1">' %(color, key[0], key[1], test))
+                    f.write('<td %s><a href="%s/%s/%s%s/log.html">log</a>'
+                            '<font size="-1">' %(color, key[0], key[1], test,
+                                                 utils.format_attempt_path(attempt)))
                     for upgrade in data['order']:
                         f.write('<br/>%s: %s' %(upgrade,
                                                 data['details'][upgrade]))
@@ -123,7 +134,16 @@ def write_index(sql, filename):
                                    'number=%s and workname="%s";'
                                    %(key[0], key[1], test))
                     row = cursor.fetchone()
-                    f.write('<br/>Run at %s</font></td>' % row['heartbeat'])
+                    f.write('<br/>Run at %s' % row['heartbeat'])
+
+                    if attempt > 0:
+                        f.write('<br/><br/>Other attempts: ')
+                        for i in range(0, attempt):
+                            f.write('<a href="%s/%s/%s%s/log.html">%s</a> '
+                                    %(key[0], key[1], test,
+                                      utils.format_attempt_path(i), i))
+
+                    f.write('</font></td>')
                 else:
                     f.write('<td>&nbsp;</td>')
             f.write('</tr>\n')
@@ -165,8 +185,8 @@ if __name__ == '__main__':
                 in_upgrade = False
                 migration_start = None
 
-                subcursor.execute('select * from work_logs where id="%s" and number=%s and workname="%s" and worker="%s" order by timestamp asc;'
-                                  %(row['id'], row['number'], row['workname'], row['worker']))
+                subcursor.execute('select * from work_logs where id="%s" and number=%s and workname="%s" and worker="%s" and %s order by timestamp asc;'
+                                  %(row['id'], row['number'], row['workname'], row['worker'], utils.format_attempt_criteria(row['attempt'])))
                 linecount = 0
                 f.write('<html><head><title>%(id)s -- %(number)s</title>\n'
                         '<link rel="stylesheet" type="text/css" href="/style.css" />\n'

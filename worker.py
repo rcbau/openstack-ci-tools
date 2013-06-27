@@ -46,7 +46,7 @@ if __name__ == '__main__':
                           'Git merge failure detected')
                 cursor.execute('update work_queue set done="c" '
                                'where id="%s" and number=%s and workname="%s" '
-                               'and attempt %s;'
+                               'and %s;'
                                % (ident, number, workname,
                                   utils.format_attempt_criteria(attempt)))
                 cursor.execute('commit;')
@@ -70,7 +70,7 @@ if __name__ == '__main__':
                     cursor.execute('update work_queue set done="y" '
                                    'where id="%s" and '
                                    'number=%s and workname="%s" '
-                                   'and attempt %s;'
+                                   'and %s;'
                                   % (ident, number, workname,
                                      utils.format_attempt_criteria(attempt)))
                     cursor.execute('commit;')
@@ -82,7 +82,7 @@ if __name__ == '__main__':
                           'No plugin found for work of %s type' % workname)
                 cursor.execute('update work_queue set done="m" where '
                                'id="%s" and number=%s and workname="%s" and '
-                               'attempt %s;'
+                               '%s;'
                                % (ident, number, workname,
                                   utils.format_attempt_criteria(attempt)))
                 cursor.execute('commit;')
