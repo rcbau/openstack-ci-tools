@@ -74,11 +74,13 @@ def fetch_log_day(dt):
 
 
 def perform_git_fetches():
+    fetches_performed = False
     cursor = utils.get_cursor()
     subcursor = utils.get_cursor()
-    cursor.execute('select * from patchsets where state="0";')
+    cursor.execute('select * from patchsets where state="0" limit 25;')
 
     for row in cursor:
+        fetches_performed = True
         repo_path = os.path.join('/srv/git', row['project'])
         if not os.path.exists(repo_path):
             utils.clone_git(row['project'])
@@ -114,6 +116,8 @@ def perform_git_fetches():
                           'where id="%s" and number=%d;'
                           %(row['id'], row['number']))
         subcursor.execute('commit;')
+
+    return fetches_performed
 
 
 def process_patchsets():
@@ -161,3 +165,7 @@ if __name__ == '__main__':
         now -= datetime.timedelta(days=1)
 
     print '%s Added %d new patchsets' %(datetime.datetime.now(), new)
+
+    while perform_git_fetches():
+        process_patchsets()
+    process_patchsets()
