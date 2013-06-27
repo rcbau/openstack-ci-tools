@@ -134,7 +134,7 @@ def queue_work(cursor, ident, number, workname, attempt=0):
                    '(id, number, workname, attempt) values '
                    '("%s", %d, "%s", %s);'
                    %(ident, number, workname,
-                     formatted_attempt_insert(attempt)))
+                     format_attempt_insert(attempt)))
     cursor.execute('commit;')
 
 
@@ -283,15 +283,24 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
         '[script exit code = %d]' % p.returncode)
 
 
-def recheck(ident, number, workname):
+def recheck(ident, number, workname=None):
     cursor = get_cursor()
+    if not workname:
+        cursor.execute('select distinct(workname) from work_queue where '
+                       'id="%s" and number=%s;'
+                       %(ident, number))
+        for row in cursor:
+            recheck(ident, number, workname=row['workname'])
+        return
+
     cursor.execute('select max(attempt) from work_queue where id="%s" and number=%s and workname="%s";'
-                   %(sys.argv[1], sys.argv[2], sys.argv[3]))
+                   %(ident, number, workname))
     row = cursor.fetchone()
     attempt = row['max(attempt)']
     attempt += 1
 
     cursor.execute('insert into work_queue(id, number, workname, attempt) values ("%s", %s, "%s", %s);'
-                   %(sys.argv[1], sys.argv[2], sys.argv[3], attempt))
+                   %(ident, number, workname, attempt))
     cursor.execute('commit;')
+    print 'Added recheck for %s %s %s' %(ident, number, workname)
 

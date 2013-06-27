@@ -26,7 +26,12 @@ FETCH_DAYS = 3
 #   p: plugins run
 
 
+rechecks = {}
+
+
 def fetch_log_day(dt):
+    global rechecks
+
     new = 0
     cursor = utils.get_cursor()
 
@@ -62,6 +67,18 @@ def fetch_log_day(dt):
                                 packet['change']['id'],
                                 packet['patchSet']['number']))
                 cursor.execute('commit;')
+
+            elif packet.get('type') == 'comment-added':
+                if (packet.get('comment').startswith('recheck') or
+                    packet.get('comment').startswith('reverify')):
+                    # Confusingly, this is the timestamp for the comment
+                    ts = packet['patchSet']['createdOn']
+                    ts = datetime.datetime.fromtimestamp(ts)
+                    key = (packet['change']['id'],
+                           packet['patchSet']['number'])
+                    rechecks.setdefault(key, [])
+                    if not ts in rechecks[key]:
+                        rechecks[key].append(ts)
 
         try:
             process_patchsets()
@@ -169,3 +186,13 @@ if __name__ == '__main__':
     while perform_git_fetches():
         process_patchsets()
     process_patchsets()
+
+    cursor = utils.get_cursor()
+    for ident, number in rechecks:
+        for ts in rechecks[(ident, number)]:
+            cursor.execute('insert ignore into patchset_rechecks '
+                           '(id, number, timestamp) values ("%s", %s, %s);'
+                           %(ident, number, utils.datetime_as_sql(ts)))
+            if cursor.rowcount:
+                utils.recheck(ident, number)
+            cursor.execute('commit;')

@@ -9,4 +9,4 @@ import sys
 import utils
 
 
-utils.recheck(sys.argv[1], sys.argv[2], sys.argv[3])
+utils.recheck(sys.argv[1], sys.argv[2], workname=sys.argv[3])
