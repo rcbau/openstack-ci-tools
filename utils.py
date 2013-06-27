@@ -157,7 +157,7 @@ def dequeue_work(cursor, worker):
 
 def clear_log(cursor, ident, number, workname, attempt):
     cursor.execute('delete from work_logs where id="%s" and number=%s and '
-                   'workname="%s" and attempt %s;'
+                   'workname="%s" and %s;'
                    %(ident, number, workname,
                      format_attempt_criteria(attempt)))
     print 'Deleted %d old log lines' % cursor.rowcount
