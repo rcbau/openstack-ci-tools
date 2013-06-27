@@ -320,7 +320,9 @@ if __name__ == '__main__':
                        'and done="y";'
                        %(ident, number))
         for row in cursor:
-            result.append('%s:' % test_name_as_display(row['workname']))
+            result.append('%s attempt %s:'
+                          %(test_name_as_display(row['workname']),
+                            row['attempt']))
             worknames.append(row['workname'])
             try:
                 with open('/var/www/ci/%s/%s/%s/data'
