@@ -194,5 +194,10 @@ if __name__ == '__main__':
                            '(id, number, timestamp) values ("%s", %s, %s);'
                            %(ident, number, utils.datetime_as_sql(ts)))
             if cursor.rowcount:
-                utils.recheck(ident, number)
+                delta = datetime.datetime.now() - ts
+                if delta.days > 3:
+                    print 'Recheck ignored because it is older than three days'
+                else:
+                    print 'Recheck'
+                    utils.recheck(ident, number)
             cursor.execute('commit;')
