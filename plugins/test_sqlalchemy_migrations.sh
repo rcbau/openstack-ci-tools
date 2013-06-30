@@ -106,6 +106,10 @@ echo "Now test the patchset"
 pip_requires
 db_sync "patchset" $2 $3 $4 $5
 
+# Determine the final schema version
+version=`mysql -u $3 --password=$4 $5 -e "select * from migrate_version \G" | grep version | sed 's/.*: //'`
+echo "Final schema version is $version"
+
 # Cleanup virtual env
 set +x
 echo "Cleaning up virtual env"
