@@ -8,6 +8,8 @@ apt-get install git python-pip git-review libxml2-dev libxml2-utils libxslt-dev 
 
 cp etc/my.cnf /etc/mysql/
 cp etc/usr.sbin.mysqld /etc/apparmor.d/
+cp etc/mysql-server /etc/logrotate.d/
+cp etc/logrotate /etc/cron.daily/
 
 mkdir -p /var/log/mysql
 touch /var/log/mysql/slow-queries.log
