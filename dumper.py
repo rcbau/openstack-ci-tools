@@ -157,6 +157,8 @@ def write_index(sql, filename):
 
 
 if __name__ == '__main__':
+    print '...'
+
     cursor = utils.get_cursor()
     subcursor = utils.get_cursor()
     subsubcursor = utils.get_cursor()
@@ -314,36 +316,51 @@ if __name__ == '__main__':
 
         # If we get here, then we owe people an email about a complete run of
         # tests
-        result = []
-        worknames = []
+        results = {}
         cursor.execute('select * from work_queue where id="%s" and number=%s '
                        'and done="y";'
                        %(ident, number))
         for row in cursor:
-            result.append('%s attempt %s:'
+            results.setdefault(row['workname'], {})
+            results[row['workname']].setdefault(row['attempt'], [])
+            results[row['workname']][row['attempt']].append(
+                          '%s attempt %s:'
                           %(test_name_as_display(row['workname']),
                             row['attempt']))
-            worknames.append(row['workname'])
             try:
                 with open('/var/www/ci/%s/%s/%s/data'
                           %(row['id'], row['number'], row['workname'])) as f:
                      data = json.loads(f.read())
                      for upgrade in data['order']:
-                         result.append('    %s: %s' %(upgrade,
-                                                      data['details'][upgrade]))
+                         results[row['workname']][row['attempt']].append(
+                           '    %s: %s' %(upgrade,
+                                          data['details'][upgrade]))
             except Exception, e:
                 print 'Error: %s' % e
 
             url = ('http://openstack.stillhq.com/ci/%s/%s/%s/log.html'
                    %(row['id'], row['number'], row['workname']))
-            result.append('    Log URL: %s' % url)
-            result.append('')
+            results[row['workname']][row['attempt']].append(
+                          '    Log URL: %s' % url)
+            results[row['workname']][row['attempt']].append('')
 
+        result = []
+        for workname in sorted(results.keys()):
+            attempt = max(results[workname].keys())
+            for line in results[workname][attempt]:
+                result.append(line)
+
+        print 'Emailing %s #%s' %(row['id'], row['number'])
         utils.send_email('Patchset %s #%s' %(row['id'], row['number']),
                          'ci@lists.stillhq.com',
                          NEW_RESULT_EMAIL
                          % {'results': '\n'.join(result)})
-        subcursor.execute('update work_queue set emailed = "y" where id="%s" '
-                          'and number=%s and workname in ("%s");'
-                          %(row['id'], row['number'], '", "'.join(worknames)))
+
+        for workname in results:
+            for attempt in results[workname]:
+                subcursor.execute('update work_queue set emailed = "y" where '
+                                  'id="%s" and number=%s and workname="%s" '
+                                  'and attempt=%s;'
+                                  %(row['id'], row['number'], workname,
+                                    attempt))
         subcursor.execute('commit;')
