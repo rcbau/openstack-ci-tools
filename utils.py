@@ -102,7 +102,11 @@ def clone_git(project):
     proj_elems = project.split('/')
     cmd = ('/srv/openstack-ci-tools/gitclone.sh %s %s'
            %(proj_elems[0], proj_elems[1]))
-    utils.execute(cursor, worker, ident, number, workname, attempt, cmd)
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    l = p.stdout.readline()
+    while l:
+        print '%s %s' %(datetime.datetime.now(), l)
+        l = p.stdout.readline()
 
 
 def create_git(project, refurl, cursor, worker, ident, number, workname,
