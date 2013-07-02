@@ -56,8 +56,8 @@ def fetch_log_day(dt):
                                 packet['change']['project'],
                                 packet['patchSet']['number'],
                                 packet['patchSet']['ref'],
-                                packet['change']['subject'],
-                                packet['change']['owner']['name'],
+                                utils.Normalize(packet['change']['subject']),
+                                utils.Normalize(packet['change']['owner']['name']),
                                 packet['change']['url'],
                                 ts))
                 new += cursor.rowcount
