@@ -13,6 +13,7 @@ import smtplib
 import subprocess
 import sys
 import time
+import unicodedata
 import uuid
 
 from email import encoders
@@ -308,3 +309,8 @@ def recheck(ident, number, workname=None):
     cursor.execute('commit;')
     print 'Added recheck for %s %s %s' %(ident, number, workname)
 
+
+def Normalize(value):
+  normalized = unicodedata.normalize('NFKD', unicode(value))
+  normalized = normalized.encode('ascii', 'ignore')
+  return normalized
