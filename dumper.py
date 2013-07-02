@@ -11,6 +11,7 @@ import re
 import utils
 
 
+# Remember that the timestamp isn't actually part of the log row!
 UPGRADE_BEGIN_RE = re.compile('\*+ DB upgrade to state of (.*) starts \*+')
 UPGRADE_END_RE = re.compile('\*+ DB upgrade to state of (.*) finished \*+')
 
@@ -18,9 +19,10 @@ GIT_CHECKOUT_RE = re.compile('/srv/git-checkouts/[a-z]+/'
                              '[a-z]+_refs_changes_[0-9_]+')
 VENV_PATH_RE = re.compile('/home/mikal/\.virtualenvs/refs_changes_[0-9_]+')
 
-# Remember that the timestamp isn't actually part of the log row!
 MIGRATION_START_RE = re.compile('([0-9]+) -&gt; ([0-9]+)\.\.\.$')
 MIGRATION_END_RE = re.compile('^done$')
+
+FINAL_VERSION_RE = re.compile('Final schema version is ([0-9]+)')
 
 NEW_RESULT_EMAIL = """Results for a test are available.
 
@@ -131,9 +133,21 @@ def write_index(sql, filename):
                     f.write('<td %s><a href="%s/%s/%s%s/log.html">log</a>'
                             '<font size="-1">' %(color, key[0], key[1], test,
                                                  utils.format_attempt_path(attempt)))
+
+                    if data.get('result', ''):
+                        f.write('<br/><b>%s</b><br/>'
+                                % data.get('result', ''))
+
                     for upgrade in data['order']:
                         f.write('<br/>%s: %s' %(upgrade,
                                                 data['details'][upgrade]))
+
+                    if data.get('final_schema_version', ''):
+                        f.write('<br/>Final schema version: %s'
+                                % data.get('final_schema_version'))
+                    if data.get('expected_final_schema_version', ''):
+                        f.write('<br/>Expected schema version: %s'
+                                % data.get('expected_final_schema_version'))
 
                     cursor.execute('select * from work_queue where id="%s" and '
                                    'number=%s and workname="%s";'
@@ -191,6 +205,7 @@ if __name__ == '__main__':
                 upgrade_times = {}
                 in_upgrade = False
                 migration_start = None
+                final_version = None
 
                 subcursor.execute('select * from work_logs where id="%s" and number=%s and workname="%s" and worker="%s" and %s order by timestamp asc;'
                                   %(row['id'], row['number'], row['workname'], row['worker'], utils.format_attempt_criteria(row['attempt'])))
@@ -203,6 +218,10 @@ if __name__ == '__main__':
                         % {'id': row['id'],
                            'number': row['number']})
                 for logrow in subcursor:
+                    m = FINAL_VERSION_RE.match(logrow['log'])
+                    if m:
+                         final_version = int(m.group(1))
+
                     m = UPGRADE_BEGIN_RE.match(logrow['log'])
                     if m:
                          upgrade_name = m.group(1)
@@ -264,7 +283,8 @@ if __name__ == '__main__':
                 display_upgrades = []
                 data = {'order': upgrades,
                         'details' : {},
-                        'details_seconds': {}}
+                        'details_seconds': {},
+                        'final_schema_version': final_version}
                 for upgrade in upgrades:
                     time_str = timedelta_as_str(upgrade_times[upgrade])
                     display_upgrades.append('<li><a href="#%(name)s">'
@@ -277,12 +297,26 @@ if __name__ == '__main__':
                         upgrade_times[upgrade].seconds
                     data['color'] = ''
 
-                    print '    %s (%s)' %(upgrade, upgrade_times[upgrade].seconds)
+                    print '    %s (%s)' %(upgrade,
+                                          upgrade_times[upgrade].seconds)
                     if upgrade == 'patchset':
                         if upgrade_times[upgrade].seconds > 30:
                             data['color'] = 'bgcolor="#FA5858"'
-                            data['result'] = 'Failed'
+                            data['result'] = 'Failed: patchset too slow'
                             print '        Failed'
+
+                if final_version:
+                    subsubcursor.execute('select max(migration) from '
+                                         'patchset_migrations where id="%s" '
+                                         'and number=%s;'
+                                         %(row['id'], row['number']))
+                    subsubrow = subsubcursor.fetchone()
+                    data['expected_final_schema_version'] = \
+                        subsubrow['max(migration)']
+                    if final_version != subsubrow['max(migration)']:
+                        data['color'] = 'bgcolor="#FA5858"'
+                        data['result'] = 'Failed: incorrect final version'
+                        print '        Failed'
 
                 f.write('<ul>%s</ul>' % ('\n'.join(display_upgrades)))
                 f.write('<pre><code>\n')
@@ -331,6 +365,11 @@ if __name__ == '__main__':
                 with open('/var/www/ci/%s/%s/%s/data'
                           %(row['id'], row['number'], row['workname'])) as f:
                      data = json.loads(f.read())
+
+                     if data.get('result', ''):
+                         results[row['workname']][row['attempt']].append(
+                           '    %s' % data.get('result', ''))
+
                      for upgrade in data['order']:
                          results[row['workname']][row['attempt']].append(
                            '    %s: %s' %(upgrade,
@@ -338,8 +377,9 @@ if __name__ == '__main__':
             except Exception, e:
                 print 'Error: %s' % e
 
-            url = ('http://openstack.stillhq.com/ci/%s/%s/%s/log.html'
-                   %(row['id'], row['number'], row['workname']))
+            url = ('http://openstack.stillhq.com/ci/%s/%s/%s%s/log.html'
+                   %(row['id'], row['number'], row['workname'],
+                     utils.format_attempt_path(row['attempt'])))
             results[row['workname']][row['attempt']].append(
                           '    Log URL: %s' % url)
             results[row['workname']][row['attempt']].append('')
@@ -364,3 +404,24 @@ if __name__ == '__main__':
                                   %(row['id'], row['number'], workname,
                                     attempt))
         subcursor.execute('commit;')
+
+    # Write a log of all migrations we have ever seen
+    cursor.execute('select max(migration) from patchset_migrations;')
+    max_migration = cursor.fetchone()['max(migration)']
+    for i in range(max_migration - 10, max_migration + 1):
+        with open(os.path.join('/var/www/ci/migrations/nova',
+                               str(i) + '.html'),
+                  'w') as f:
+            sql = ('select distinct(id) from patchset_files '
+                   'where filename like '
+                   '"nova/db/sqlalchemy/migrate_repo/versions/%s_%%" '
+                   'order by id;'
+                   % i)
+            print sql
+            cursor.execute(sql)
+            counter = 1
+            for row in cursor:
+                f.write('<li><a href="http://review.openstack.org/#/q/%s,n,z">'
+                        '%s</a>' %(row['id'], row['id']))
+                counter += 1
+            f.write('<br/><br/>%d patchsets' % counter)
