@@ -417,7 +417,6 @@ if __name__ == '__main__':
                    '"nova/db/sqlalchemy/migrate_repo/versions/%s_%%" '
                    'order by id;'
                    % i)
-            print sql
             cursor.execute(sql)
             counter = 1
             for row in cursor:
