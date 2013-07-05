@@ -245,12 +245,6 @@ if __name__ == '__main__':
                     if m:
                          final_version = int(m.group(1))
 
-                    m = MIGRATION_CLASH_RE.match(logrow['log'])
-                    if m:
-                         data['color'] = 'bgcolor="#FA5858"'
-                         data['result'] = 'Failed: migration number clash'
-                         print '        Failed'
-
                     m = UPGRADE_BEGIN_RE.match(logrow['log'])
                     if m:
                          upgrade_name = m.group(1)
@@ -352,6 +346,12 @@ if __name__ == '__main__':
                         data['color'] = 'bgcolor="#FA5858"'
                         data['result'] = 'Failed: incorrect final version'
                         print '        Failed'
+
+                m = MIGRATION_CLASH_RE.match(logrow['log'])
+                if m:
+                    data['color'] = 'bgcolor="#FA5858"'
+                    data['result'] = 'Failed: migration number clash'
+                    print '        Failed'
 
                 f.write('<ul>%s</ul>' % ('\n'.join(display_upgrades)))
                 f.write('<pre><code>\n')
