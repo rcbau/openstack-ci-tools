@@ -245,7 +245,7 @@ if __name__ == '__main__':
                     if m:
                          final_version = int(m.group(1))
 
-                    m = MIGRATION_CLASE_RE.match(logrow['log'])
+                    m = MIGRATION_CLASH_RE.match(logrow['log'])
                     if m:
                          data['color'] = 'bgcolor="#FA5858"'
                          data['result'] = 'Failed: migration number clash'
