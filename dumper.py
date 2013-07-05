@@ -423,4 +423,4 @@ if __name__ == '__main__':
                 f.write('<li><a href="http://review.openstack.org/#/q/%s,n,z">'
                         '%s</a>' %(row['id'], row['id']))
                 counter += 1
-            f.write('<br/><br/>%d patchsets' % counter)
+            f.write('<br/><br/>%d patchsets' %(counter - 1))
