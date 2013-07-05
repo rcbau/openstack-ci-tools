@@ -23,6 +23,8 @@ MIGRATION_START_RE = re.compile('([0-9]+) -&gt; ([0-9]+)\.\.\.$')
 MIGRATION_END_RE = re.compile('^done$')
 
 FINAL_VERSION_RE = re.compile('Final schema version is ([0-9]+)')
+MIGRATION_CLASH_RE = re.compile('Error: migration number ([0-9]+) appears '
+                                'more than once')
 
 NEW_RESULT_EMAIL = """Results for a test are available.
 
@@ -55,7 +57,7 @@ def write_index(sql, filename):
     cursor.execute(sql)
     for row in cursor:
         key = (row['id'], row['number'])
-      
+
         if not key in order:
             order.append(key)
         if not row['workname'] in test_names:
@@ -67,8 +69,8 @@ def write_index(sql, filename):
         cursor.execute('select count(*) from patchset_rechecks;')
         rechecks = cursor.fetchone()['count(*)']
 
-        cursor.execute('select timestamp from patchsets order by timestamp desc '
-                       'limit 1;')
+        cursor.execute('select timestamp from patchsets order by '
+                       'timestamp desc limit 1;')
         recent = cursor.fetchone()['timestamp']
         cursor.execute('select count(*) from work_queue where done="y";')
         jobs_done = cursor.fetchone()['count(*)']
@@ -77,11 +79,11 @@ def write_index(sql, filename):
 
         f.write('<html><head><title>Recent tests</title></head><body>\n'
                 '<p>This page lists recent CI tests run by this system.</p>\n'
-                '<p>There are currently %(total)s patchsets tracked '
-                'and %(retries)s rechecks, with '
-                '%(jobs_done)s jobs having been run. There are %(jobs_queued)s '
-                'jobs queued to run. The most recent patchset is from '
-                '%(recent)s. This page was last updated at %(now)s.</p>'
+                '<p>There are currently %(total)s patchsets tracked and '
+                '%(retries)s rechecks, with %(jobs_done)s jobs having been '
+                'run. There are %(jobs_queued)s jobs queued to run. The most '
+                'recent patchset is from %(recent)s. This page was last '
+                'updated at %(now)s.</p>'
                 '<table><tr><td><b>Patchset</b></td>'
                 %{'total': total,
                   'retries': rechecks,
@@ -98,14 +100,15 @@ def write_index(sql, filename):
         row_colors = ['', ' bgcolor="#CCCCCC"']
         row_count = 0
         for key in order:
-            cursor.execute('select * from patchsets where id="%s" and number=%s '
-                           'order by timestamp desc limit 1;'
+            cursor.execute('select * from patchsets where id="%s" and '
+                           'number=%s order by timestamp desc limit 1;'
                            %(key[0], key[1]))
             row = cursor.fetchone()
             f.write('<tr%(color)s><td>'
                     '<a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
                     '<font size="-1">%(proj)s at %(timestamp)s<br/>'
-                    '<a href="%(url)s">%(subj)s by %(who)s</a><br/></font></td>'
+                    '<a href="%(url)s">%(subj)s by %(who)s</a><br/>'
+                    '</font></td>'
                     % {'color': row_colors[row_count % 2],
                        'id': key[0],
                        'num': key[1],
@@ -115,11 +118,13 @@ def write_index(sql, filename):
                        'who': row['owner_name'],
                        'url': row['url']})
             for test in test_names:
-                test_dir = os.path.join('/var/www/ci', key[0], str(key[1]), test)
+                test_dir = os.path.join('/var/www/ci', key[0], str(key[1]),
+                                        test)
 
                 # Find attempts
                 attempt = 0
-                while os.path.exists(test_dir + utils.format_attempt_path(attempt)):
+                while os.path.exists(test_dir +
+                                     utils.format_attempt_path(attempt)):
                     attempt += 1
                 attempt -= 1
 
@@ -131,8 +136,9 @@ def write_index(sql, filename):
                         data = json.loads(d.read())
                     color = data.get('color', '')
                     f.write('<td %s><a href="%s/%s/%s%s/log.html">log</a>'
-                            '<font size="-1">' %(color, key[0], key[1], test,
-                                                 utils.format_attempt_path(attempt)))
+                            '<font size="-1">'
+                            %(color, key[0], key[1], test,
+                              utils.format_attempt_path(attempt)))
 
                     if data.get('result', ''):
                         f.write('<br/><b>%s</b><br/>'
@@ -149,8 +155,8 @@ def write_index(sql, filename):
                         f.write('<br/>Expected schema version: %s'
                                 % data.get('expected_final_schema_version'))
 
-                    cursor.execute('select * from work_queue where id="%s" and '
-                                   'number=%s and workname="%s";'
+                    cursor.execute('select * from work_queue where id="%s" '
+                                   'and number=%s and workname="%s";'
                                    %(key[0], key[1], test))
                     row = cursor.fetchone()
                     f.write('<br/>Run at %s' % row['heartbeat'])
@@ -207,20 +213,43 @@ if __name__ == '__main__':
                 migration_start = None
                 final_version = None
 
-                subcursor.execute('select * from work_logs where id="%s" and number=%s and workname="%s" and worker="%s" and %s order by timestamp asc;'
-                                  %(row['id'], row['number'], row['workname'], row['worker'], utils.format_attempt_criteria(row['attempt'])))
+                subcursor.execute('select * from work_logs where id="%s" and '
+                                  'number=%s and workname="%s" and '
+                                  'worker="%s" and %s order by timestamp asc;'
+                                  %(row['id'], row['number'], row['workname'],
+                                    row['worker'],
+                                    utils.format_attempt_criteria(
+                                        row['attempt'])))
                 linecount = 0
                 f.write('<html><head><title>%(id)s -- %(number)s</title>\n'
-                        '<link rel="stylesheet" type="text/css" href="/style.css" />\n'
+                        '<link rel="stylesheet" type="text/css" '
+                        'href="/style.css" />\n'
                         '</head><body>\n'
                         '<h1>CI run for %(id)s, patchset %(number)s</h1>\n'
-                        '<p>What is this? This page shows the logs from a database upgrade continuous integration run. Each patchset which proposes a database migration is run against a set of test databases. This page shows the results for one of those test databases. If the database is from Folsom, you will see a Grizzly migration in the bullet list below. You should then see an upgrade to the current state of trunk, and then finally the upgrade(s) contained in the patchset. For more information, please contact <a href="mailto:mikal@stillhq.com">mikal@stillhq.com</a>.</p>\n'
+                        '<p>What is this? This page shows the logs from a '
+                        'database upgrade continuous integration run. Each '
+                        'patchset which proposes a database migration is run '
+                        'against a set of test databases. This page shows the '
+                        'results for one of those test databases. If the '
+                        'database is from Folsom, you will see a Grizzly '
+                        'migration in the bullet list below. You should then '
+                        'see an upgrade to the current state of trunk, and '
+                        'then finally the upgrade(s) contained in the '
+                        'patchset. For more information, please contact '
+                        '<a href="mailto:mikal@stillhq.com">'
+                        'mikal@stillhq.com</a>.</p>\n'
                         % {'id': row['id'],
                            'number': row['number']})
                 for logrow in subcursor:
                     m = FINAL_VERSION_RE.match(logrow['log'])
                     if m:
                          final_version = int(m.group(1))
+
+                    m = MIGRATION_CLASE_RE.match(logrow['log'])
+                    if m:
+                         data['color'] = 'bgcolor="#FA5858"'
+                         data['result'] = 'Failed: migration number clash'
+                         print '        Failed'
 
                     m = UPGRADE_BEGIN_RE.match(logrow['log'])
                     if m:
@@ -231,7 +260,8 @@ if __name__ == '__main__':
 
                          buffered.append('<a name="%s"></a>' % upgrade_name)
 
-                    line = ('<a name="%(linenum)s"></a><a href="#%(linenum)s">#</a> '
+                    line = ('<a name="%(linenum)s"></a>'
+                            '<a href="#%(linenum)s">#</a> '
                             % {'linenum': linecount})
                     if in_upgrade:
                         line += '<b>'
@@ -245,21 +275,24 @@ if __name__ == '__main__':
                     m = MIGRATION_END_RE.match(cleaned)
                     if m and migration_start:
                         elapsed = logrow['timestamp'] - migration_start
-                        cleaned += ('              <font color="red">[%s]</font>'
+                        cleaned += ('              <font color="red">[%s]'
+                                    '</font>'
                                     % timedelta_as_str(elapsed))
                         migration_start = None
 
                     m = MIGRATION_START_RE.match(cleaned)
                     if m:
                         migration_start = logrow['timestamp']
-                        subsubcursor.execute('select * from patchset_migrations '
+                        subsubcursor.execute('select * from '
+                                             'patchset_migrations '
                                              'where id="%s" and number=%s and '
                                              'migration=%s;'
                                              %(row['id'], row['number'],
                                                m.group(2)))
                         subsubrow = subsubcursor.fetchone()
                         if subsubrow:
-                            cleaned += '     <font color="red">[%s]</font>' % subsubrow['name']
+                            cleaned += ('     <font color="red">[%s]</font>'
+                                        % subsubrow['name'])
 
                     line += ('%(timestamp)s %(line)s'
                              % {'timestamp': logrow['timestamp'],
@@ -276,7 +309,9 @@ if __name__ == '__main__':
                          in_upgrade = False
                          elapsed = logrow['timestamp'] - upgrade_start
                          elapsed_str = timedelta_as_str(elapsed)
-                         buffered.append('                                        <font color="red"><b>[%s total]</b></font>\n' 
+                         buffered.append('                                   '
+                                         '     <font color="red"><b>'
+                                         '[%s total]</b></font>\n'
                                           % elapsed_str)
                          upgrade_times[upgrade_name] = elapsed
 

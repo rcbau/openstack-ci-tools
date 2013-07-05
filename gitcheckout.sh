@@ -26,3 +26,7 @@ git checkout -b trunk
 git fetch https://review.openstack.org/$2 $3
 git checkout FETCH_HEAD
 git checkout -b target
+
+# We need to rebase to pull in deltas between trunk and the point where this
+# patch diverged from trunk.
+git rebase origin
