@@ -23,7 +23,7 @@ MIGRATION_START_RE = re.compile('([0-9]+) -&gt; ([0-9]+)\.\.\.$')
 MIGRATION_END_RE = re.compile('^done$')
 
 FINAL_VERSION_RE = re.compile('Final schema version is ([0-9]+)')
-MIGRATION_CLASH_RE = re.compile('Error: migration number ([0-9]+) appears '
+MIGRATION_CLASH_RE = re.compile('Error: migration number .* appears '
                                 'more than once')
 
 NEW_RESULT_EMAIL = """Results for a test are available.
@@ -240,6 +240,8 @@ if __name__ == '__main__':
                         'mikal@stillhq.com</a>.</p>\n'
                         % {'id': row['id'],
                            'number': row['number']})
+
+                data = {}
                 for logrow in subcursor:
                     m = FINAL_VERSION_RE.match(logrow['log'])
                     if m:
@@ -253,6 +255,12 @@ if __name__ == '__main__':
                          in_upgrade = True
 
                          buffered.append('<a name="%s"></a>' % upgrade_name)
+
+                    m = MIGRATION_CLASH_RE.match(logrow['log'])
+                    if m:
+                        data['color'] = 'bgcolor="#FA5858"'
+                        data['result'] = 'Failed: migration number clash'
+                        print '    Failed'
 
                     line = ('<a name="%(linenum)s"></a>'
                             '<a href="#%(linenum)s">#</a> '
@@ -310,10 +318,10 @@ if __name__ == '__main__':
                          upgrade_times[upgrade_name] = elapsed
 
                 display_upgrades = []
-                data = {'order': upgrades,
-                        'details' : {},
-                        'details_seconds': {},
-                        'final_schema_version': final_version}
+                data.update({'order': upgrades,
+                             'details' : {},
+                             'details_seconds': {},
+                             'final_schema_version': final_version})
                 for upgrade in upgrades:
                     time_str = timedelta_as_str(upgrade_times[upgrade])
                     display_upgrades.append('<li><a href="#%(name)s">'
@@ -346,12 +354,6 @@ if __name__ == '__main__':
                         data['color'] = 'bgcolor="#FA5858"'
                         data['result'] = 'Failed: incorrect final version'
                         print '        Failed'
-
-                m = MIGRATION_CLASH_RE.match(logrow['log'])
-                if m:
-                    data['color'] = 'bgcolor="#FA5858"'
-                    data['result'] = 'Failed: migration number clash'
-                    print '        Failed'
 
                 f.write('<ul>%s</ul>' % ('\n'.join(display_upgrades)))
                 f.write('<pre><code>\n')
