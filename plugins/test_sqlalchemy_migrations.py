@@ -79,5 +79,6 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
               'dbuser': flags['test_dbuser'],
               'dbpassword': flags['test_dbpassword'],
               'db': db})
-    utils.execute(cursor, worker, ident, number, workname, attempt, cmd)
+    utils.execute(cursor, worker, ident, number, workname, attempt, cmd,
+                  timeout=(3600 * 2)))
     return True

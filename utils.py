@@ -224,7 +224,8 @@ def datetime_as_sql(value):
               '''%a, %d %b %Y %H:%i:%s'''))
 
 
-def execute(cursor, worker, ident, number, workname, attempt, cmd):
+def execute(cursor, worker, ident, number, workname, attempt, cmd,
+            timeout=-1):
     names = {}
     lines = {}
     syslog = os.open('/var/log/syslog', os.O_RDONLY)
@@ -243,6 +244,7 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
     lines[mysql] = ''
 
     cmd += ' 2>&1'
+    start_time = time.time()
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     names[p.stdout.fileno()] = ''
     lines[p.stdout.fileno()] = ''
@@ -266,6 +268,10 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd):
 
     phase = 0
     while phase < 2:
+        if timeout > 0 and time.time() - start_time > timeout:
+            log(cursor, worker, ident, number, workname, attempt, '[timeout]')
+            os.kill(p.pid, 9)
+
         for fd, flag in poll_obj.poll(0):
             process(fd)
 
