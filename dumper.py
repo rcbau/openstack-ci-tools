@@ -23,6 +23,8 @@ MIGRATION_START_RE = re.compile('([0-9]+) -&gt; ([0-9]+)\.\.\.$')
 MIGRATION_END_RE = re.compile('^done$')
 
 FINAL_VERSION_RE = re.compile('Final schema version is ([0-9]+)')
+MIGRATION_CLASH_RE = re.compile('Error: migration number ([0-9]+) appears '
+                                'more than once')
 
 NEW_RESULT_EMAIL = """Results for a test are available.
 
@@ -242,6 +244,12 @@ if __name__ == '__main__':
                     m = FINAL_VERSION_RE.match(logrow['log'])
                     if m:
                          final_version = int(m.group(1))
+
+                    m = MIGRATION_CLASE_RE.match(logrow['log'])
+                    if m:
+                         data['color'] = 'bgcolor="#FA5858"'
+                         data['result'] = 'Failed: migration number clash'
+                         print '        Failed'
 
                     m = UPGRADE_BEGIN_RE.match(logrow['log'])
                     if m:
