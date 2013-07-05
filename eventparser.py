@@ -36,49 +36,56 @@ def fetch_log_day(dt):
     cursor = utils.get_cursor()
 
     for host in ['dfw', 'ord', 'syd']:
-        print ('%s Fetching http://gerrit-stream-logger-%s.stillhq.com/'
-               'output/%s/%s/%s'
-               %(datetime.datetime.now(),
-                 host, dt.year, dt.month, dt.day))
-        remote = urllib.urlopen('http://gerrit-stream-logger-%s.stillhq.com/'
-                                'output/%s/%s/%s'
-                                %(host, dt.year, dt.month, dt.day))
-        for line in remote.readlines():
-            packet = json.loads(line)
-            if packet.get('type') == 'patchset-created':
-                ts = packet['patchSet']['createdOn']
-                ts = datetime.datetime.fromtimestamp(ts)
-                cursor.execute('insert ignore into patchsets '
-                               '(id, project, number, refurl, state, subject, '
-                               ' owner_name, url, timestamp) '
-                               'values (%s, %s, %s, %s, 0, %s, %s, %s, %s);',
-                               (packet['change']['id'],
-                                packet['change']['project'],
-                                packet['patchSet']['number'],
-                                packet['patchSet']['ref'],
-                                utils.Normalize(packet['change']['subject']),
-                                utils.Normalize(packet['change']['owner']['name']),
-                                packet['change']['url'],
-                                ts))
-                new += cursor.rowcount
-                cursor.execute('update patchsets set timestamp=%s where '
-                               'id=%s and number=%s;',
-                               (ts,
-                                packet['change']['id'],
-                                packet['patchSet']['number']))
-                cursor.execute('commit;')
-
-            elif packet.get('type') == 'comment-added':
-                if (packet.get('comment').startswith('recheck') or
-                    packet.get('comment').startswith('reverify')):
-                    # Confusingly, this is the timestamp for the comment
+        try:
+            print ('%s Fetching http://gerrit-stream-logger-%s.stillhq.com/'
+                   'output/%s/%s/%s'
+                   %(datetime.datetime.now(),
+                     host, dt.year, dt.month, dt.day))
+            remote = urllib.urlopen('http://gerrit-stream-logger-%s.'
+                                    'stillhq.com/output/%s/%s/%s'
+                                    %(host, dt.year, dt.month, dt.day))
+            for line in remote.readlines():
+                packet = json.loads(line)
+                if packet.get('type') == 'patchset-created':
                     ts = packet['patchSet']['createdOn']
                     ts = datetime.datetime.fromtimestamp(ts)
-                    key = (packet['change']['id'],
-                           packet['patchSet']['number'])
-                    rechecks.setdefault(key, [])
-                    if not ts in rechecks[key]:
-                        rechecks[key].append(ts)
+                    cursor.execute('insert ignore into patchsets '
+                                   '(id, project, number, refurl, state, '
+                                   'subject, owner_name, url, timestamp) '
+                                   'values (%s, %s, %s, %s, 0, %s, %s, %s, '
+                                   '%s);',
+                                   (packet['change']['id'],
+                                    packet['change']['project'],
+                                    packet['patchSet']['number'],
+                                    packet['patchSet']['ref'],
+                                    utils.Normalize(
+                                        packet['change']['subject']),
+                                    utils.Normalize(
+                                        packet['change']['owner']['name']),
+                                    packet['change']['url'],
+                                    ts))
+                    new += cursor.rowcount
+                    cursor.execute('update patchsets set timestamp=%s where '
+                                   'id=%s and number=%s;',
+                                   (ts,
+                                    packet['change']['id'],
+                                    packet['patchSet']['number']))
+                    cursor.execute('commit;')
+
+                elif packet.get('type') == 'comment-added':
+                    if (packet.get('comment').startswith('recheck') or
+                        packet.get('comment').startswith('reverify')):
+                        # Confusingly, this is the timestamp for the comment
+                        ts = packet['patchSet']['createdOn']
+                        ts = datetime.datetime.fromtimestamp(ts)
+                        key = (packet['change']['id'],
+                               packet['patchSet']['number'])
+                        rechecks.setdefault(key, [])
+                        if not ts in rechecks[key]:
+                            rechecks[key].append(ts)
+
+        except Exception, e:
+            print '%s Error: %s' %(datetime.datetime.now(), e)
 
         try:
             process_patchsets()
