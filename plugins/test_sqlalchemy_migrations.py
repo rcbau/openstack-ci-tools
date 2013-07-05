@@ -57,6 +57,7 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
               'Plugin for work queue item found.')
 
     # Record the migration names present
+    version = {}
     migrations = os.path.join(git_repo,
                               'nova/db/sqlalchemy/migrate_repo/versions')
     for ent in os.listdir(migrations):
@@ -66,7 +67,20 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
                            '(id, number, migration, name) '
                            'values("%s", %s, %s, "%s");'
                            %(ident, number, m.group(1), m.group(2)))
+            versions.setdefault(number, [])
+            versions[number].append(name)
     cursor.execute('commit;')
+
+    # Make sure we only have one .py per version number
+    for number in version:
+        if len(version[number]) > 1:
+            utils.log(cursor, worker, ident, number, workname, attempt,
+                      'Error: migration number %s appears more than once'
+                      % number)
+            for name in version[number]:
+                utils.log(cursor, worker, ident, number, workname, attempt,
+                          '%s: %s' %(number, name))
+            return True
 
     safe_refurl = change['refurl'].replace('/', '_')
 
