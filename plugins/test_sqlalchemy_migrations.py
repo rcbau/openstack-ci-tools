@@ -72,14 +72,14 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
     cursor.execute('commit;')
 
     # Make sure we only have one .py per version number
-    for number in version:
-        if len(version[number]) > 1:
+    for migration in version:
+        if len(version[migration]) > 1:
             utils.log(cursor, worker, ident, number, workname, attempt,
                       'Error: migration number %s appears more than once'
-                      % number)
-            for name in version[number]:
+                      % migration)
+            for name in version[migration]:
                 utils.log(cursor, worker, ident, number, workname, attempt,
-                          '%s: %s' %(number, name))
+                          '%s: %s' %(migration, name))
             return True
 
     safe_refurl = change['refurl'].replace('/', '_')
