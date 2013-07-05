@@ -67,8 +67,8 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
                            '(id, number, migration, name) '
                            'values("%s", %s, %s, "%s");'
                            %(ident, number, m.group(1), m.group(2)))
-            versions.setdefault(number, [])
-            versions[number].append(name)
+            version.setdefault(number, [])
+            version[number].append(name)
     cursor.execute('commit;')
 
     # Make sure we only have one .py per version number
