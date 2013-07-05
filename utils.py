@@ -304,13 +304,15 @@ def recheck(ident, number, workname=None):
             recheck(ident, number, workname=row['workname'])
         return
 
-    cursor.execute('select max(attempt) from work_queue where id="%s" and number=%s and workname="%s";'
+    cursor.execute('select max(attempt) from work_queue where id="%s" and '
+                   'number=%s and workname="%s";'
                    %(ident, number, workname))
     row = cursor.fetchone()
     attempt = row['max(attempt)']
     attempt += 1
 
-    cursor.execute('insert into work_queue(id, number, workname, attempt) values ("%s", %s, "%s", %s);'
+    cursor.execute('insert into work_queue(id, number, workname, attempt) '
+                   'values ("%s", %s, "%s", %s);'
                    %(ident, number, workname, attempt))
     cursor.execute('commit;')
     print 'Added recheck for %s %s %s' %(ident, number, workname)
