@@ -20,5 +20,7 @@ chmod ugo+r /var/log/syslog /var/log/mysql/slow-queries.log /var/log/mysql/error
 
 chown -R mysql.mysql /srv/mysql
 
+/usr/sbin/logrotate /etc/logrotate.conf
+
 /etc/init.d/apparmor restart
 /etc/init.d/mysql restart
