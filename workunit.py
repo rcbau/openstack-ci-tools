@@ -233,7 +233,7 @@ class WorkUnit(object):
                            'worker="%s" and constraints="%s" and attempt=%s '
                            'order by timestamp asc;'
                            %(self.ident, self.number, self.workname,
-                             self.worker, self.constraints, self.attempt)))
+                             self.worker, self.constraints, self.attempt))
             linecount = 0
             f.write(LOG_HEADER %{'id': row['id'],
                                  'number': row['number']})
