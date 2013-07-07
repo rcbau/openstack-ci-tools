@@ -93,8 +93,8 @@ def write_index(sql, filename):
                        'url': row['url']})
             for test in test_names:
                 f.write('<td><table>')
-                for work in workunit.find_latest_attempts(key[0], key[1],
-                                                          test):
+                for work in workunit.find_latest_attempts(cursor, key[0],
+                                                          key[1], test):
                     test_dir = work.diskpath()
                     if os.path.exists(test_dir):
                         with open(os.path.join(test_dir, 'data'), 'r') as d:
@@ -156,6 +156,12 @@ if __name__ == '__main__':
                                  row['attempt'], row['constraints'])
         work.worker = row['worker']
         work.persist_to_disk(subcursor)
+        subcursor.execute('update work_queue set dumped="y" where '
+                          'id="%s" and number=%s and workname="%s" '
+                          'and constraints="%s" and attempt=%s;'
+                          %(ident, number, workname, constraints,
+                            attempt))
+    subcursor.execute('commit;')
 
     # Write out an index file
     write_index('select * from work_queue order by heartbeat desc limit 100;',
