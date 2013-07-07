@@ -190,7 +190,7 @@ if __name__ == '__main__':
         # tests
         results = {}
         cursor.execute('select * from work_queue where id="%s" and number=%s '
-                       'and done="y";'
+                       'and done is not null;'
                        %(ident, number))
         for row in cursor:
             results.setdefault(row['workname'], {})
@@ -238,8 +238,9 @@ if __name__ == '__main__':
             for attempt in results[workname]:
                 subcursor.execute('update work_queue set emailed = "y" where '
                                   'id="%s" and number=%s and workname="%s" '
-                                  'and attempt=%s;'
-                                  %(ident, number, workname, attempt))
+                                  'and constraints="%s" and attempt=%s;'
+                                  %(ident, number, workname, constraints,
+                                    attempt))
         subcursor.execute('commit;')
 
     # Write a log of all migrations we have ever seen
