@@ -13,7 +13,7 @@ import utils
 if __name__ == '__main__':
     cursor = utils.get_cursor()
     worker = socket.gethostname()
-    constraints = utils.get_config.get(constraints, '')
+    constraints = utils.get_config().get(constraints, '')
 
     try:
         while True:
