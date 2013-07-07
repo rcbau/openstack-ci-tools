@@ -88,7 +88,7 @@ class WorkUnit(object):
         cursor.execute('delete from work_logs where id="%s" and number=%s and '
                        'workname="%s" and constraints="%s" and attempt=%s;'
                        %(self.ident, self.number, self.workname,
-                         self.constraints, self.attempt)
+                         self.constraints, self.attempt))
     cursor.execute('commit;')
 
 
