@@ -170,5 +170,5 @@ class WorkUnit(object):
         cursor.execute('insert ignore into patchset_migrations'
                        '(id, number, migration, name) '
                        'values("%s", %s, %s, "%s");'
-                       %(ident, number, migration, name))
+                       %(self.ident, self.number, migration, name))
         cursor.execute('commit;')
