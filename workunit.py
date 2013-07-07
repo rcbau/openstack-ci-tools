@@ -204,7 +204,7 @@ class WorkUnit(object):
                             self.workname)
         if self.constraints != 'mysql':
             path += '_%s' % self.constraints
-        path += utils.format_attempt_path(row['attempt'])
+        path += utils.format_attempt_path(self.attempt)
         return path
 
     def persist_to_disk(self, cursor):
