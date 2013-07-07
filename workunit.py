@@ -216,17 +216,24 @@ class WorkUnit(object):
                             self._unique_path())
 
     def persist_to_disk(self, cursor):
+        cursor.execute('select * from work_queue where id="%s" and number=%s '
+                       'and workname="%s" and constraints="%s" and '
+                       'attempt=%s;'
+                       %(self.ident, self.number, self.workname,
+                         self.constraints, self.attempt))
+        row = cursor.fetchone()
+        if row['dumped'] == 'y':
+            return
+
         subcursor = utils.get_cursor()
 
         path = self.disk_path()
         datapath = os.path.join(path, 'data')
         workerpath = os.path.join(path, 'worker')
 
-        if os.path.exists(path):
-            return
-
         print path
-        os.makedirs(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
         with open(workerpath, 'w') as f:
             f.write(self.worker)
         with open(os.path.join(path, 'log.html'), 'w') as f:
