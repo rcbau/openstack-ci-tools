@@ -100,8 +100,8 @@ def write_index(sql, filename):
                         with open(os.path.join(test_dir, 'data'), 'r') as d:
                             data = json.loads(d.read())
                         color = data.get('color', '')
-                        f.write('<tr %s><td><b>%s</b>'
-                                '<a href="%s/log.html">log</a>'
+                        f.write('<tr %s><td><b>%s</b> ['
+                                '<a href="%s/log.html">log</a>]'
                                 '<font size="-1">'
                                 %(color, work.constraints, work.url()))
 
@@ -135,8 +135,9 @@ def write_index(sql, filename):
                         f.write('</font></td></tr>')
                     else:
                         f.write('<tr><td>&nbsp;</td></tr>')
+                f.write('</table></td>')
 
-            f.write('</table></td></tr>\n')
+            f.write('</tr>\n')
             row_count += 1
         f.write('</table></body></html>')
 
