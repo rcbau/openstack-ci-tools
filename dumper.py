@@ -157,7 +157,8 @@ if __name__ == '__main__':
     subcursor = utils.get_cursor()
 
     # Write out individual work logs
-    cursor.execute('select * from work_queue where done is not null;')
+    cursor.execute('select * from work_queue where done is not null '
+                   'and dumped is null;')
     for row in cursor:
         work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
                                  row['attempt'], row['constraints'])
@@ -206,7 +207,7 @@ if __name__ == '__main__':
                             row['attempt']))
             with open(os.path.join(work.disk_path(), 'data')) as f:
                 data = json.loads(f.read())
-                
+
                 if data.get('result', ''):
                     results[(row['workname'],
                              row['constraints'])][row['attempt']].append(
