@@ -204,7 +204,7 @@ if __name__ == '__main__':
                           '%s attempt %s:'
                           %(test_name_as_display(row['workname']),
                             row['attempt']))
-            with open(work.disk_path()) as f:
+            with open(os.path.join(work.disk_path(), 'data')) as f:
                 data = json.loads(f.read())
                 
                 if data.get('result', ''):
