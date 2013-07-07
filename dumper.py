@@ -239,8 +239,8 @@ if __name__ == '__main__':
                          NEW_RESULT_EMAIL
                          % {'results': '\n'.join(result)})
 
-        for workname, constraint in results:
-            for attempt in results[workname]:
+        for workname, constraints in results:
+            for attempt in results[(workname, constraints)]:
                 subcursor.execute('update work_queue set emailed = "y" where '
                                   'id="%s" and number=%s and workname="%s" '
                                   'and constraints="%s" and attempt>=%s;'
