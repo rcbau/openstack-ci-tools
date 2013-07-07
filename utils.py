@@ -14,7 +14,6 @@ import subprocess
 import sys
 import time
 import unicodedata
-import uuid
 
 from email import encoders
 from email.mime.base import MIMEBase
