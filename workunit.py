@@ -216,9 +216,11 @@ class WorkUnit(object):
         datapath = os.path.join(path, 'data')
         workerpath = os.path.join(path, 'worker')
 
+        if os.path.exists(path):
+            return
+
         print path
-        if not os.path.exists(path):
-            os.makedirs(path)
+        os.makedirs(path)
         with open(workerpath, 'w') as f:
             f.write(self.worker)
         with open(os.path.join(path, 'log.html'), 'w') as f:
