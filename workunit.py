@@ -105,7 +105,7 @@ class WorkUnit(object):
     def log(self, cursor, l):
         timestamp = datetime.datetime.now()
         print '%s %s' % (timestamp, l.rstrip())
-        batchlog(cursor, [(timestamp, l)])
+        self.batchlog(cursor, [(timestamp, l)])
 
     def batchlog(self, cursor, entries):
         logdir = os.path.join('/srv/logs', ident)
