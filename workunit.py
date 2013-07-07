@@ -7,6 +7,7 @@
 
 import datetime
 import os
+import _mysql
 import uuid
 
 import utils

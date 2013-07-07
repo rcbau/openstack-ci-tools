@@ -4,7 +4,6 @@ import datetime
 import git
 import json
 import mimetypes
-import _mysql
 import MySQLdb
 import os
 import select
