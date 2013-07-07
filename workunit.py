@@ -98,6 +98,23 @@ def recheck(cursor, ident, number, workname=None):
                                                 constraint)
 
 
+def find_latest_attempts(cursor, ident, number, workname):
+    constraints = []
+    cursor.execute('select distinct(constraints) from work_queue where '
+                   'id="%s" and number=%s and workname="%s";'
+                   %(ident, number, workname))
+    for row in cursor:
+        constraints.append(row['constraints'])
+
+    for constraint in constraints:
+        cursor.execute('select max(attempt) from work_queue where id="%s" and '
+                       'number=%s and workname="%s" and constraints="%s";'
+                       %(ident, number, workname, constraint))
+        row = cursor.fetchone()
+        yield WorkUnit(ident, number, workname, row['max(attempt)'],
+                       constraint)
+
+
 class WorkUnit(object):
     def __init__(self, ident, number, workname, attempt, constraints):
         self.ident = ident

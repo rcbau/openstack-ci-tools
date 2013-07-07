@@ -92,60 +92,52 @@ def write_index(sql, filename):
                        'who': row['owner_name'],
                        'url': row['url']})
             for test in test_names:
-                test_dir = os.path.join('/var/www/ci', key[0], str(key[1]),
-                                        test)
+                f.write('<td><table>')
+                for work in workunit.find_latest_attempts(key[0], key[1],
+                                                          test):
+                    test_dir = work.diskpath()
+                    if os.path.exists(test_dir):
+                        with open(os.path.join(test_dir, 'data'), 'r') as d:
+                            data = json.loads(d.read())
+                        color = data.get('color', '')
+                        f.write('<tr %s><td><b>%s</b>'
+                                '<a href="%s/log.html">log</a>'
+                                '<font size="-1">'
+                                %(color, work.constraints, work.url())
 
-                # Find attempts
-                attempt = 0
-                while os.path.exists(test_dir +
-                                     utils.format_attempt_path(attempt)):
-                    attempt += 1
-                attempt -= 1
+                        if data.get('result', ''):
+                            f.write('<br/><b>%s</b><br/>'
+                                    % data.get('result', ''))
 
-                if attempt > 0:
-                    test_dir += utils.format_attempt_path(attempt)
+                        for upgrade in data['order']:
+                            f.write('<br/>%s: %s' %(upgrade,
+                                                    data['details'][upgrade]))
 
-                if os.path.exists(test_dir):
-                    with open(os.path.join(test_dir, 'data'), 'r') as d:
-                        data = json.loads(d.read())
-                    color = data.get('color', '')
-                    f.write('<td %s><a href="%s/%s/%s%s/log.html">log</a>'
-                            '<font size="-1">'
-                            %(color, key[0], key[1], test,
-                              utils.format_attempt_path(attempt)))
+                        if data.get('final_schema_version', ''):
+                            f.write('<br/>Final schema version: %s'
+                                    % data.get('final_schema_version'))
+                        if data.get('expected_final_schema_version', ''):
+                            f.write('<br/>Expected schema version: %s'
+                                    % data.get('expected_final_schema_version'))
 
-                    if data.get('result', ''):
-                        f.write('<br/><b>%s</b><br/>'
-                                % data.get('result', ''))
+                        cursor.execute('select * from work_queue where id="%s" '
+                                       'and number=%s and workname="%s";'
+                                       %(key[0], key[1], test))
+                        row = cursor.fetchone()
+                        f.write('<br/>Run at %s' % row['heartbeat'])
 
-                    for upgrade in data['order']:
-                        f.write('<br/>%s: %s' %(upgrade,
-                                                data['details'][upgrade]))
+                        if attempt > 0:
+                            f.write('<br/><br/>Other attempts: ')
+                            for i in range(0, attempt):
+                                f.write('<a href="%s/%s/%s%s/log.html">%s</a> '
+                                        %(key[0], key[1], test,
+                                          utils.format_attempt_path(i), i))
 
-                    if data.get('final_schema_version', ''):
-                        f.write('<br/>Final schema version: %s'
-                                % data.get('final_schema_version'))
-                    if data.get('expected_final_schema_version', ''):
-                        f.write('<br/>Expected schema version: %s'
-                                % data.get('expected_final_schema_version'))
+                        f.write('</font></td></tr>')
+                    else:
+                        f.write('<tr><td>&nbsp;</td></tr>')
 
-                    cursor.execute('select * from work_queue where id="%s" '
-                                   'and number=%s and workname="%s";'
-                                   %(key[0], key[1], test))
-                    row = cursor.fetchone()
-                    f.write('<br/>Run at %s' % row['heartbeat'])
-
-                    if attempt > 0:
-                        f.write('<br/><br/>Other attempts: ')
-                        for i in range(0, attempt):
-                            f.write('<a href="%s/%s/%s%s/log.html">%s</a> '
-                                    %(key[0], key[1], test,
-                                      utils.format_attempt_path(i), i))
-
-                    f.write('</font></td>')
-                else:
-                    f.write('<td>&nbsp;</td>')
-            f.write('</tr>\n')
+            f.write('</table></td></tr>\n')
             row_count += 1
         f.write('</table></body></html>')
 
