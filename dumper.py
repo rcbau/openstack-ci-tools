@@ -172,7 +172,7 @@ if __name__ == '__main__':
     cursor.execute('select * from work_queue where done is not null;')
     for row in cursor:
         work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
-                                 row['constraints'], row['attempt'])
+                                 row['attempt'], row['constraints'])
         work.worker = row['worker']
         work.persist_to_disk(subcursor)
 
