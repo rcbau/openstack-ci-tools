@@ -19,18 +19,6 @@ NEW_RESULT_EMAIL = """Results for a test are available.
 """
 
 
-def timedelta_as_str(delta):
-    seconds = delta.days * (24 * 60 * 60)
-    seconds += delta.seconds
-
-    if seconds < 60:
-        return '%d seconds' % seconds
-
-    remainder = seconds % 60
-    return '%d minutes, %d seconds' %((seconds - remainder) / 60,
-                                      remainder)
-
-
 def test_name_as_display(test):
     return test.replace('sqlalchemy_migration_nova', 'nova upgrade').\
                 replace('_', ' ')

@@ -275,7 +275,7 @@ class WorkUnit(object):
                 if m and migration_start:
                     elapsed = logrow['timestamp'] - migration_start
                     cleaned += ('              <font color="red">[%s]</font>'
-                                % timedelta_as_str(elapsed))
+                                % utils.timedelta_as_str(elapsed))
                     migration_start = None
 
                 m = MIGRATION_START_RE.match(cleaned)
@@ -304,7 +304,7 @@ class WorkUnit(object):
                 if m:
                     in_upgrade = False
                     elapsed = logrow['timestamp'] - upgrade_start
-                    elapsed_str = timedelta_as_str(elapsed)
+                    elapsed_str = utils.timedelta_as_str(elapsed)
                     buffered.append('                                   '
                                     '     <font color="red"><b>'
                                     '[%s total]</b></font>\n'
@@ -317,7 +317,7 @@ class WorkUnit(object):
                          'details_seconds': {},
                          'final_schema_version': final_version})
             for upgrade in upgrades:
-                time_str = timedelta_as_str(upgrade_times[upgrade])
+                time_str = utils.timedelta_as_str(upgrade_times[upgrade])
                 display_upgrades.append('<li><a href="#%(name)s">'
                                         'Upgrade to %(name)s -- '
                                         '%(elapsed)s</a>'

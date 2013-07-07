@@ -197,3 +197,15 @@ def Normalize(value):
   normalized = unicodedata.normalize('NFKD', unicode(value))
   normalized = normalized.encode('ascii', 'ignore')
   return normalized
+
+
+def timedelta_as_str(delta):
+    seconds = delta.days * (24 * 60 * 60)
+    seconds += delta.seconds
+
+    if seconds < 60:
+        return '%d seconds' % seconds
+
+    remainder = seconds % 60
+    return '%d minutes, %d seconds' %((seconds - remainder) / 60,
+                                      remainder)
