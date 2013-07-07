@@ -5,6 +5,7 @@
 # All code for the work_queue and work_logs tables should reside here.
 
 
+import cgi
 import datetime
 import _mysql
 import os
