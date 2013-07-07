@@ -70,7 +70,7 @@ class WorkUnit(object):
     def enqueue(self, cursor):
         cursor.execute('insert ignore into work_queue'
                        '(id, number, workname, constraints, attempt) '
-                       'values ("%s", %s, "%s", "%s", %s);',
+                       'values ("%s", %s, "%s", "%s", %s);'
                        %(self.ident, self.number, self.workname,
                          self.constraints, self.attempt))
         cursor.execute('commit;')
