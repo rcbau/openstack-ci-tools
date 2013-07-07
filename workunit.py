@@ -200,7 +200,7 @@ class WorkUnit(object):
         cursor.execute('commit;')
 
     def disk_path(self):
-        path = os.path.join('/var/www/ci', self.ident, self.number,
+        path = os.path.join('/var/www/ci', self.ident, str(self.number),
                             self.workname)
         if self.constraints != 'mysql':
             path += '_%s' % self.constraints
