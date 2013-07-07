@@ -8,7 +8,11 @@ lvcreate -L99G -nsrv srv
 lvcreate -L100G -nmysql srv
 mkfs.ext4 /dev/mapper/srv-srv 
 mkfs.ext4 /dev/mapper/srv-mysql
+
+set +e
 /etc/network/if-up.d/volumes 
+set -e
+
 mkdir /srv/mysql
 /etc/network/if-up.d/volumes 
 df -h
