@@ -108,7 +108,7 @@ class WorkUnit(object):
         self.batchlog(cursor, [(timestamp, l)])
 
     def batchlog(self, cursor, entries):
-        logdir = os.path.join('/srv/logs', ident)
+        logdir = os.path.join('/srv/logs', self.ident)
         if not os.path.exists(logdir):
            os.makedirs(logdir)
 
