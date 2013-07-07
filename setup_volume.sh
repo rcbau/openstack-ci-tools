@@ -21,9 +21,3 @@ chown -R mikal.mikal /srv
 mkdir /srv/git
 mkdir /srv/git-checkouts
 mkdir /srv/logs
-
-scp -rp gerrit-event-slave.stillhq.com:/srv/mysql/* /srv/mysql/
-scp -rp gerrit-event-slave.stillhq.com:/srv/[cd]* /srv/
-
-chown -R mikal.mikal /srv
-chown -R mysql.mysql /srv/mysql
