@@ -28,7 +28,7 @@ chmod ugo+r /var/log/syslog /var/log/mysql/slow-queries.log /var/log/mysql/error
 
 chown -R mysql.mysql /srv/mysql
 
-if [ -e /etc/logrotate.d/percona-server-server-5.5]
+if [ -e /etc/logrotate.d/percona-server-server-5.5 ]
 then
   rm /etc/logrotate.d/percona-server-server-5.5
 fi
