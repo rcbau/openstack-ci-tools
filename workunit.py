@@ -218,9 +218,7 @@ class WorkUnit(object):
         if not os.path.exists(path):
             os.makedirs(path)
         with open(workerpath, 'w') as f:
-            f.write(row['worker'])
-        with open(os.path.join(path, 'state'), 'w') as f:
-            f.write(row['done'])
+            f.write(self.worker)
         with open(os.path.join(path, 'log.html'), 'w') as f:
             buffered = []
             upgrades = []
@@ -236,8 +234,8 @@ class WorkUnit(object):
                            %(self.ident, self.number, self.workname,
                              self.worker, self.constraints, self.attempt))
             linecount = 0
-            f.write(LOG_HEADER %{'id': row['id'],
-                                 'number': row['number']})
+            f.write(LOG_HEADER %{'id': self.ident,
+                                 'number': self.number})
 
             data = {}
             for logrow in cursor:
@@ -285,8 +283,7 @@ class WorkUnit(object):
                     subcursor.execute('select * from patchset_migrations '
                                       'where id="%s" and number=%s and '
                                       'migration=%s;'
-                                      %(row['id'], row['number'],
-                                        m.group(2)))
+                                      %(self.ident, self.number, m.group(2)))
                     subrow = subcursor.fetchone()
                     if subrow:
                         cleaned += ('     <font color="red">[%s]</font>'
@@ -342,7 +339,7 @@ class WorkUnit(object):
                 subcursor.execute('select max(migration) from '
                                   'patchset_migrations where id="%s" '
                                   'and number=%s;'
-                                  %(row['id'], row['number']))
+                                  %(self.ident, self.number))
                 subrow = subcursor.fetchone()
                 data['expected_final_schema_version'] = \
                   subrow['max(migration)']
