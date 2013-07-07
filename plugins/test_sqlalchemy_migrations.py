@@ -65,7 +65,7 @@ def ExecuteWork(cursor, work, git_repo, change):
     for ent in os.listdir(migrations):
         m = MIGRATION_NAME_RE.match(ent)
         if m:
-            work.record_migration(m.group(1), m.group(2))
+            work.record_migration(cursor, m.group(1), m.group(2))
             version.setdefault(m.group(1), [])
             version[m.group(1)].append(m.group(2))
     cursor.execute('commit;')
