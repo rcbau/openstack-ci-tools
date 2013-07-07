@@ -173,6 +173,7 @@ if __name__ == '__main__':
     for row in cursor:
         work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
                                  row['constraints'], row['attempt'])
+        work.worker = row['worker']
         work.persist_to_disk(subcursor)
 
     # Write out an index file
