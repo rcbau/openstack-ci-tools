@@ -52,11 +52,21 @@ def recheck(cursor, ident, number, workname=None):
     attempt = row['max(attempt)']
     attempt += 1
 
-    cursor.execute('insert into work_queue(id, number, workname, attempt) '
-                   'values ("%s", %s, "%s", %s);'
-                   %(ident, number, workname, attempt))
-    cursor.execute('commit;')
-    print 'Added recheck for %s %s %s' %(ident, number, workname)
+    constraints = []
+    cursor.execute('select distinct(constraints) from work_queue where '
+                   'id="%s" and number=%s and workname="%s";'
+                   %(ident, number, workname))
+    for row in cursor:
+        constraints.append(row['constraints'])
+
+    for constraint in constraints:
+        cursor.execute('insert into work_queue(id, number, workname, '
+                       'constraints, attempt) '
+                       'values ("%s", %s, "%s", "%s", %s);'
+                       %(ident, number, workname, constraint, attempt))
+        cursor.execute('commit;')
+        print 'Added recheck for %s %s %s %s' %(ident, number, workname,
+                                                constraint)
 
 
 class WorkUnit(object):
