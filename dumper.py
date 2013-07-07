@@ -210,19 +210,19 @@ if __name__ == '__main__':
 
                      if data.get('result', ''):
                          results[(row['workname'],
-                                  row['constraint'])][row['attempt']].append(
+                                  row['constraints'])][row['attempt']].append(
                            '    %s' % data.get('result', ''))
 
                      for upgrade in data['order']:
                          results[(row['workname'],
-                                  row['constraint'])][row['attempt']].append(
+                                  row['constraints'])][row['attempt']].append(
                            '    %s: %s' %(upgrade,
                                           data['details'][upgrade]))
             except Exception, e:
                 print 'Error: %s' % e
 
             results[(row['workname'],
-                     row['constraints')][row['attempt']].append(
+                     row['constraints'])][row['attempt']].append(
                           '    Log URL: %s' % work.url())
             results[(row['workname'],
                      row['constraints'])][row['attempt']].append('')
