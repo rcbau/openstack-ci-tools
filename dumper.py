@@ -222,11 +222,11 @@ if __name__ == '__main__':
                           '    Log URL: %s' % url)
             results[row['workname']][row['attempt']].append('')
 
-            result = []
-            for workname in sorted(results.keys()):
-                attempt = max(results[workname].keys())
-                for line in results[workname][attempt]:
-                    result.append(line)
+        result = []
+        for workname in sorted(results.keys()):
+            attempt = max(results[workname].keys())
+            for line in results[workname][attempt]:
+                result.append(line)
 
         print 'Emailing %s #%s' %(ident, number)
         utils.send_email('Patchset %s #%s' %(ident, number),
