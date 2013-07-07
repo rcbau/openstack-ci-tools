@@ -89,7 +89,7 @@ class WorkUnit(object):
                        'workname="%s" and constraints="%s" and attempt=%s;'
                        %(self.ident, self.number, self.workname,
                          self.constraints, self.attempt))
-    cursor.execute('commit;')
+        cursor.execute('commit;')
 
 
     def log(self, cursor, l):
