@@ -228,19 +228,18 @@ if __name__ == '__main__':
                 for line in results[workname][attempt]:
                     result.append(line)
 
-            print 'Emailing %s #%s' %(row['id'], row['number'])
-            utils.send_email('Patchset %s #%s' %(row['id'], row['number']),
-                             'ci@lists.stillhq.com',
-                             NEW_RESULT_EMAIL
-                             % {'results': '\n'.join(result)})
+        print 'Emailing %s #%s' %(ident, number)
+        utils.send_email('Patchset %s #%s' %(ident, number),
+                         'ci@lists.stillhq.com',
+                         NEW_RESULT_EMAIL
+                         % {'results': '\n'.join(result)})
 
-            for workname in results:
-                for attempt in results[workname]:
-                    subcursor.execute('update work_queue set emailed = "y" '
-                                      'where id="%s" and number=%s and '
-                                      'workname="%s" and attempt=%s;'
-                                      %(row['id'], row['number'], workname,
-                                        attempt))
+        for workname in results:
+            for attempt in results[workname]:
+                subcursor.execute('update work_queue set emailed = "y" where '
+                                  'id="%s" and number=%s and workname="%s" '
+                                  'and attempt=%s;'
+                                  %(ident, number, workname, attempt))
         subcursor.execute('commit;')
 
     # Write a log of all migrations we have ever seen
