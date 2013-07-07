@@ -115,7 +115,7 @@ class WorkUnit(object):
         logpath = os.path.join(logdir,
                                (str(self.number) +
                                 (utils.format_attempt_path(self.attempt) +
-                                 '_' + workname + '.log')))
+                                 '_' + self.workname + '.log')))
 
         with open(logpath, 'a+') as f:
             sql = ('insert into work_logs(id, number, workname, worker, log, '
