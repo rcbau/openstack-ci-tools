@@ -171,7 +171,7 @@ if __name__ == '__main__':
     # Write out individual work logs
     cursor.execute('select * from work_queue where done is not null;')
     for row in cursor:
-        work = workunit.WorkUnit(row['id'], row['number'],
+        work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
                                  row['constraints'], row['attempt'])
         work.persist_to_disk(subcursor)
 
