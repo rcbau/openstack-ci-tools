@@ -102,7 +102,7 @@ def write_index(sql, filename):
                         color = data.get('color', '')
                         f.write('<tr %s><td><b>%s</b> ['
                                 '<a href="%s/log.html">log</a>]'
-                                '<font size="-1">'
+                                '<font size="-1"><ul>'
                                 %(color, work.constraints, work.url()))
 
                         if data.get('result', ''):
@@ -132,7 +132,7 @@ def write_index(sql, filename):
                                 f.write('<a href="%s/log.html">%s</a> '
                                         %(work.url(attempt=i), i))
 
-                        f.write('</font></td></tr>')
+                        f.write('</ul></font></td></tr>')
                     else:
                         f.write('<tr><td>&nbsp;</td></tr>')
                 f.write('</table></td>')

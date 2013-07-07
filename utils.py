@@ -207,5 +207,4 @@ def timedelta_as_str(delta):
         return '%d seconds' % seconds
 
     remainder = seconds % 60
-    return '%d minutes, %d seconds' %((seconds - remainder) / 60,
-                                      remainder)
+    return '%d min, %d sec' %((seconds - remainder) / 60, remainder)
