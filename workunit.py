@@ -42,7 +42,7 @@ def recheck(cursor, ident, number, workname=None):
                        'id="%s" and number=%s;'
                        %(ident, number))
         for row in cursor:
-            recheck(ident, number, workname=row['workname'])
+            recheck(cursor, ident, number, workname=row['workname'])
         return
 
     cursor.execute('select max(attempt) from work_queue where id="%s" and '
