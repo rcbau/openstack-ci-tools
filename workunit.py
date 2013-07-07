@@ -390,7 +390,7 @@ class WorkUnit(object):
             with open(datapath, 'w') as d:
                 d.write(json.dumps(data))
 
-    def mark_dumped(cursor):
+    def mark_dumped(self, cursor):
         cursor.execute('update work_queue set dumped="y" where '
                        'id="%s" and number=%s and workname="%s" '
                        'and constraints="%s" and attempt=%s;'
