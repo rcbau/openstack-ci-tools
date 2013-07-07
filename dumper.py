@@ -126,12 +126,11 @@ def write_index(sql, filename):
                         row = cursor.fetchone()
                         f.write('<br/>Run at %s' % row['heartbeat'])
 
-                        if attempt > 0:
+                        if work.attempt > 0:
                             f.write('<br/><br/>Other attempts: ')
                             for i in range(0, attempt):
                                 f.write('<a href="%s/%s/%s%s/log.html">%s</a> '
-                                        %(key[0], key[1], test,
-                                          utils.format_attempt_path(i), i))
+                                        %(work.url(attempt=i)))
 
                         f.write('</font></td></tr>')
                     else:
