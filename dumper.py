@@ -103,7 +103,7 @@ def write_index(sql, filename):
                         f.write('<tr %s><td><b>%s</b>'
                                 '<a href="%s/log.html">log</a>'
                                 '<font size="-1">'
-                                %(color, work.constraints, work.url())
+                                %(color, work.constraints, work.url()))
 
                         if data.get('result', ''):
                             f.write('<br/><b>%s</b><br/>'
