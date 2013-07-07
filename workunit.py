@@ -209,10 +209,11 @@ class WorkUnit(object):
         return path
 
     def disk_path(self):
-        return os.path.join('/var/www/ci', self.unique_path())
+        return os.path.join('/var/www/ci', self._unique_path())
 
     def url(self):
-        return os.path.join('http://openstack.stillhq.com', self.unique_path())
+        return os.path.join('http://openstack.stillhq.com',
+                            self._unique_path())
 
     def persist_to_disk(self, cursor):
         subcursor = utils.get_cursor()
