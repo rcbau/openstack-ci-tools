@@ -128,7 +128,7 @@ def write_index(sql, filename):
 
                         if work.attempt > 0:
                             f.write('<br/><br/>Other attempts: ')
-                            for i in range(0, attempt):
+                            for i in range(0, work.attempt):
                                 f.write('<a href="%s/%s/%s%s/log.html">%s</a> '
                                         %(work.url(attempt=i)))
 
