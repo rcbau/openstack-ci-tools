@@ -70,9 +70,10 @@ def recheck(cursor, ident, number, workname=None):
 
 
 class WorkUnit(object):
-    def __init__(self, ident, number, attempt, constraints):
+    def __init__(self, ident, number, workname, attempt, constraints):
         self.ident = ident
         self.number = number
+        self.workname = workname
         self.attempt = attempt
         self.constraints = constraints
         self.worker = None
