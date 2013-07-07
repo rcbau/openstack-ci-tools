@@ -183,7 +183,7 @@ if __name__ == '__main__':
                        %(ident, number))
         row = cursor.fetchone()
         if row['count(*)'] > 0:
-            print '    %s #%s not complete' %(ident, number)
+            print '%s #%s not complete' %(ident, number)
             continue
 
         # If we get here, then we owe people an email about a complete run of
