@@ -90,7 +90,7 @@ class WorkUnit(object):
     def heartbeat(self, cursor):
         cursor.execute('update work_queue set heartbeat=NOW() where '
                        'id="%s" and number=%s and workname="%s" and '
-                       'worker="%s" and attempt=%s;'
+                       'worker="%s" and and constraints="%s" and attempt=%s;'
                        %(self.ident, self.number, self.workname, self.worker,
                         self.constraints, self.attempt))
         cursor.execute('commit;')
