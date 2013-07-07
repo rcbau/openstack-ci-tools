@@ -91,7 +91,6 @@ class WorkUnit(object):
                          self.constraints, self.attempt))
         cursor.execute('commit;')
 
-
     def log(self, cursor, l):
         timestamp = datetime.datetime.now()
         print '%s %s' % (timestamp, l.rstrip())
