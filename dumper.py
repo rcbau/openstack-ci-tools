@@ -221,9 +221,11 @@ if __name__ == '__main__':
             except Exception, e:
                 print 'Error: %s' % e
 
-            results[row['workname']][row['attempt']].append(
+            results[(row['workname'],
+                     row['constraints')][row['attempt']].append(
                           '    Log URL: %s' % work.url())
-            results[row['workname']][row['attempt']].append('')
+            results[(row['workname'],
+                     row['constraints'])][row['attempt']].append('')
 
         result = []
         for workname, constraint in sorted(results.keys()):
