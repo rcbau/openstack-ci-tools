@@ -7,6 +7,7 @@
 
 import cgi
 import datetime
+import json
 import _mysql
 import os
 import re
@@ -210,7 +211,7 @@ class WorkUnit(object):
 
     def persist_to_disk(self, cursor):
         subcursor = utils.get_cursor()
-        
+
         path = self.disk_path()
         datapath = os.path.join(path, 'data')
         workerpath = os.path.join(path, 'worker')
