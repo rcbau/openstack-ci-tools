@@ -201,13 +201,18 @@ class WorkUnit(object):
                        %(self.ident, self.number, migration, name))
         cursor.execute('commit;')
 
-    def disk_path(self):
-        path = os.path.join('/var/www/ci', self.ident, str(self.number),
-                            self.workname)
+    def _unique_path(self):
+        path = os.path.join(self.ident, str(self.number), self.workname)
         if self.constraints != 'mysql':
             path += '_%s' % self.constraints
         path += utils.format_attempt_path(self.attempt)
         return path
+
+    def disk_path(self):
+        return os.path.join('/var/www/ci', self.unique_path())
+
+    def url(self):
+        return os.path.join('http://openstack.stillhq.com', self.unique_path())
 
     def persist_to_disk(self, cursor):
         subcursor = utils.get_cursor()

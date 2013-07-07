@@ -193,39 +193,42 @@ if __name__ == '__main__':
                        'and done is not null;'
                        %(ident, number))
         for row in cursor:
-            results.setdefault(row['workname'], {})
-            results[row['workname']].setdefault(row['attempt'], [])
-            results[row['workname']][row['attempt']].append(
+            work = workunit.WorkItem(row['id'], row['number'], row['workname'],
+                                     row['attempt'], row['constraints'])
+
+            results.setdefault((row['workname'], row['constraints']), {})
+            results[(row['workname'],
+                     row['constraints'])].setdefault(row['attempt'], [])
+            results[(row['workname'],
+                     row['constraints'])][row['attempt']].append(
                           '%s attempt %s:'
                           %(test_name_as_display(row['workname']),
                             row['attempt']))
             try:
-                with open('/var/www/ci/%s/%s/%s/data'
-                          %(row['id'], row['number'], row['workname'])) as f:
+                with open(work.disk_path()) as f:
                      data = json.loads(f.read())
 
                      if data.get('result', ''):
-                         results[row['workname']][row['attempt']].append(
+                         results[(row['workname'],
+                                  row['constraint'])][row['attempt']].append(
                            '    %s' % data.get('result', ''))
 
                      for upgrade in data['order']:
-                         results[row['workname']][row['attempt']].append(
+                         results[(row['workname'],
+                                  row['constraint'])][row['attempt']].append(
                            '    %s: %s' %(upgrade,
                                           data['details'][upgrade]))
             except Exception, e:
                 print 'Error: %s' % e
 
-            url = ('http://openstack.stillhq.com/ci/%s/%s/%s%s/log.html'
-                   %(row['id'], row['number'], row['workname'],
-                     utils.format_attempt_path(row['attempt'])))
             results[row['workname']][row['attempt']].append(
-                          '    Log URL: %s' % url)
+                          '    Log URL: %s' % work.url())
             results[row['workname']][row['attempt']].append('')
 
         result = []
-        for workname in sorted(results.keys()):
-            attempt = max(results[workname].keys())
-            for line in results[workname][attempt]:
+        for workname, constraint in sorted(results.keys()):
+            attempt = max(results[(workname, constraint)].keys())
+            for line in results[(workname, constraint)][attempt]:
                 result.append(line)
 
         print 'Emailing %s #%s' %(ident, number)
@@ -234,11 +237,11 @@ if __name__ == '__main__':
                          NEW_RESULT_EMAIL
                          % {'results': '\n'.join(result)})
 
-        for workname in results:
+        for workname, constraint in results:
             for attempt in results[workname]:
                 subcursor.execute('update work_queue set emailed = "y" where '
                                   'id="%s" and number=%s and workname="%s" '
-                                  'and constraints="%s" and attempt=%s;'
+                                  'and constraints="%s" and attempt>=%s;'
                                   %(ident, number, workname, constraints,
                                     attempt))
         subcursor.execute('commit;')
