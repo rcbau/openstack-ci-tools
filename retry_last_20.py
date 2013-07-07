@@ -7,8 +7,9 @@ import utils
 
 
 cursor = utils.get_cursor()
+subcursor = utils.get_cursor()
 cursor.execute('select distinct(concat(id, "~", number)) as idnum from '
                'work_queue order by heartbeat desc limit 20;')
 for row in cursor:
     id, number = row['idnum'].split('~')
-    workunit.recheck(id, int(number))
+    workunit.recheck(subcursor, id, int(number))

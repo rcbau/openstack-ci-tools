@@ -9,4 +9,5 @@ import sys
 import workunit
 
 
-workunit.recheck(sys.argv[1], sys.argv[2])
+cursor = utils.get_cursor()
+workunit.recheck(cursor, sys.argv[1], sys.argv[2])

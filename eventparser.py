@@ -13,6 +13,7 @@ import re
 import urllib
 
 import utils
+import workunit
 
 
 DIFF_FILENAME_RE = re.compile('^[\-\+][\-\+][\-\+] [ab]/(.*)$')
@@ -206,5 +207,5 @@ if __name__ == '__main__':
                     print 'Recheck ignored because it is older than three days'
                 else:
                     print 'Recheck'
-                    utils.recheck(ident, number)
+                    workunit.recheck(cursor, ident, number)
             cursor.execute('commit;')

@@ -36,8 +36,7 @@ def dequeue_work(cursor, worker, constraints):
     return w
 
 
-def recheck(ident, number, workname=None):
-    cursor = get_cursor()
+def recheck(cursor, ident, number, workname=None):
     if not workname:
         cursor.execute('select distinct(workname) from work_queue where '
                        'id="%s" and number=%s;'
