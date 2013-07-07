@@ -127,7 +127,7 @@ class WorkUnit(object):
                               %(self.ident, self.number, self.workname,
                                 self.worker, _mysql.escape_string(log),
                                 utils.datetime_as_sql(timestamp),
-                                self.contstraints, self.attempt))
+                                self.constraints, self.attempt))
             f.write('%s %s\n' %(timestamp, log.rstrip()))
 
         sql += ', '.join(values)
