@@ -83,7 +83,7 @@ def ExecuteWork(cursor, work, git_repo, change):
     safe_refurl = change['refurl'].replace('/', '_')
 
     flags = utils.get_config()
-    db = workname[len('sqlalchemy_migration_'):]
+    db = work.workname[len('sqlalchemy_migration_'):]
     cmd = ('/srv/openstack-ci-tools/plugins/test_sqlalchemy_migrations.sh '
            '%(ref_url)s %(git_repo)s %(dbuser)s %(dbpassword)s %(db)s'
            % {'ref_url': safe_refurl,
