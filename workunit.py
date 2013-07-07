@@ -165,3 +165,10 @@ class WorkUnit(object):
                        %(state, self.ident, self.number, self.workname,
                          self.constraints, self.attempt))
         cursor.execute('commit;')
+
+    def record_migration(self, cursor, migration, name):
+        cursor.execute('insert ignore into patchset_migrations'
+                       '(id, number, migration, name) '
+                       'values("%s", %s, %s, "%s");'
+                       %(ident, number, migration, name))
+        cursor.execute('commit;')
