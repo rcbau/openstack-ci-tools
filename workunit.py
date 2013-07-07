@@ -31,7 +31,7 @@ def dequeue_work(cursor, worker, constraints):
 
     row = cursor.fetchone()
     w = WorkUnit(row['id'], row['number'], row['workname'],
-                 attempt=row['attempt'], constraints=row['constraints'])
+                 row['attempt'], row['constraints'])
     w.worker = row['worker']
     return w
 
