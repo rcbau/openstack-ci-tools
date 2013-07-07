@@ -70,9 +70,9 @@ COW_DIR = '/srv/git-shadow'
 VISIBLE_DIR = '/srv/git-checkouts'
 
 
-def get_patchset_details(cursor, ident, number):
+def get_patchset_details(cursor, work):
     cursor.execute('select * from patchsets where id="%s" and number=%s;'
-                   %(ident, number))
+                   %(work.ident, work.number))
     return cursor.fetchone()
 
 

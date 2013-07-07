@@ -22,7 +22,7 @@ if __name__ == '__main__':
             work.clear_log(cursor)
 
             # Checkout the patchset
-            change = utils.get_patchset_details(cursor, ident, number)
+            change = utils.get_patchset_details(cursor, work)
             conflict = True
             rewind = 0
 
