@@ -193,7 +193,7 @@ if __name__ == '__main__':
                        'and done is not null;'
                        %(ident, number))
         for row in cursor:
-            work = workunit.WorkItem(row['id'], row['number'], row['workname'],
+            work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
                                      row['attempt'], row['constraints'])
 
             results.setdefault((row['workname'], row['constraints']), {})
