@@ -1,10 +1,18 @@
 #!/bin/bash -x
 
+# $1 is the db engine name, currently one of:
+#    mysql
+#    percona-server
+
 git pull
+
+# Percona support
+apt-key adv --keyserver keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A
+cp etc/percona.list /etc/apt/sources.list.d/percona.list
 
 apt-get update
 apt-get dist-upgrade
-apt-get install -y git python-pip git-review libxml2-dev libxml2-utils libxslt-dev libmysqlclient-dev pep8 postgresql-server-dev-9.1 python2.7-dev python-coverage python-netaddr python-mysqldb mysql-server python-git virtualenvwrapper python-numpy
+apt-get install -y git python-pip git-review libxml2-dev libxml2-utils libxslt-dev libmysqlclient-dev pep8 postgresql-server-dev-9.1 python2.7-dev python-coverage python-netaddr python-mysqldb $1-server python-git virtualenvwrapper python-numpy
 
 cp etc/my.cnf /etc/mysql/
 cp etc/usr.sbin.mysqld /etc/apparmor.d/
