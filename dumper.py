@@ -204,22 +204,19 @@ if __name__ == '__main__':
                           '%s attempt %s:'
                           %(test_name_as_display(row['workname']),
                             row['attempt']))
-            try:
-                with open(work.disk_path()) as f:
-                     data = json.loads(f.read())
+            with open(work.disk_path()) as f:
+                data = json.loads(f.read())
+                
+                if data.get('result', ''):
+                    results[(row['workname'],
+                             row['constraints'])][row['attempt']].append(
+                                 '    %s' % data.get('result', ''))
 
-                     if data.get('result', ''):
-                         results[(row['workname'],
-                                  row['constraints'])][row['attempt']].append(
-                           '    %s' % data.get('result', ''))
-
-                     for upgrade in data['order']:
-                         results[(row['workname'],
-                                  row['constraints'])][row['attempt']].append(
-                           '    %s: %s' %(upgrade,
-                                          data['details'][upgrade]))
-            except Exception, e:
-                print 'Error: %s' % e
+                for upgrade in data['order']:
+                    results[(row['workname'],
+                             row['constraints'])][row['attempt']].append(
+                                 '    %s: %s' %(upgrade,
+                                                data['details'][upgrade]))
 
             results[(row['workname'],
                      row['constraints'])][row['attempt']].append(
