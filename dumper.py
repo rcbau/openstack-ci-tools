@@ -95,7 +95,7 @@ def write_index(sql, filename):
                 f.write('<td><table>')
                 for work in workunit.find_latest_attempts(cursor, key[0],
                                                           key[1], test):
-                    test_dir = work.diskpath()
+                    test_dir = work.disk_path()
                     if os.path.exists(test_dir):
                         with open(os.path.join(test_dir, 'data'), 'r') as d:
                             data = json.loads(d.read())
