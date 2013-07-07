@@ -3,7 +3,9 @@
 # Recheck the last 20 reviews
 
 import sys
+
 import utils
+import workunit
 
 
 cursor = utils.get_cursor()

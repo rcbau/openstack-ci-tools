@@ -6,6 +6,7 @@
 
 import sys
 
+import utils
 import workunit
 
 
