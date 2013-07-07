@@ -113,7 +113,7 @@ def create_git(project, refurl, cursor, work, rewind):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:
-        work.log(cursor, wl)
+        work.log(cursor, l)
         if l.find('CONFLICT') != -1:
             conflict = True
         l = p.stdout.readline()
