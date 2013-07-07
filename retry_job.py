@@ -5,7 +5,8 @@
 #  number
 
 import sys
-import utils
+
+import workunit
 
 
-utils.recheck(sys.argv[1], sys.argv[2])
+workunit.recheck(sys.argv[1], sys.argv[2])

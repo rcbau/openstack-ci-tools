@@ -3,6 +3,7 @@
 import os
 import re
 
+import workunit
 import utils
 
 
@@ -41,20 +42,21 @@ def Handle(change, files):
         cursor = utils.get_cursor()
         for dataset in ['nova_trivial_500', 'nova_trivial_6000',
                         'nova_user_001']:
-            utils.queue_work(cursor, change['id'], change['number'],
-                             'sqlalchemy_migration_%s' % dataset)
+            for constraint in ['mysql']:
+                w = workunit.WorkUnit(change['id'], change['number'],
+                                      'sqlalchemy_migration_%s' % dataset,
+                                      0, constraint)
+                w.enqueue_work(cursor)
 
 
 MIGRATION_NAME_RE = re.compile('([0-9]+)_(.*)\.py')
 
 
-def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
-                change):
-    if not workname.startswith('sqlalchemy_migration_'):
+def ExecuteWork(cursor, work, git_repo, change):
+    if not work.workname.startswith('sqlalchemy_migration_'):
         return False
 
-    utils.log(cursor, worker, ident, number, workname, attempt,
-              'Plugin for work queue item found.')
+    work.log(cursor, 'Plugin for work queue item found.')
 
     # Record the migration names present
     version = {}
@@ -74,12 +76,11 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
     # Make sure we only have one .py per version number
     for migration in version:
         if len(version[migration]) > 1:
-            utils.log(cursor, worker, ident, number, workname, attempt,
-                      'Error: migration number %s appears more than once'
+            work.log(cursor,
+                     'Error: migration number %s appears more than once'
                       % migration)
             for name in version[migration]:
-                utils.log(cursor, worker, ident, number, workname, attempt,
-                          '%s: %s' %(migration, name))
+                work.log(cursor, '%s: %s' %(migration, name))
             return True
 
     safe_refurl = change['refurl'].replace('/', '_')
@@ -93,6 +94,5 @@ def ExecuteWork(cursor, ident, number, workname, worker, attempt, git_repo,
               'dbuser': flags['test_dbuser'],
               'dbpassword': flags['test_dbpassword'],
               'db': db})
-    utils.execute(cursor, worker, ident, number, workname, attempt, cmd,
-                  timeout=(3600 * 2))
+    utils.execute(cursor, work, cmd, timeout=(3600 * 2))
     return True

@@ -40,18 +40,6 @@ def get_cursor():
     return cursor
 
 
-def format_attempt_insert(attempt):
-    if attempt is None or attempt == 0:
-        return '0'
-    return attempt
-
-
-def format_attempt_criteria(attempt):
-    if attempt is None or attempt == 0:
-        return '(attempt=0 or attempt is null)'
-    return 'attempt=%s' % attempt
-
-
 def format_attempt_path(attempt):
     if attempt is None or attempt == 0:
         return ''
@@ -110,8 +98,7 @@ def clone_git(project):
         l = p.stdout.readline()
 
 
-def create_git(project, refurl, cursor, worker, ident, number, workname,
-               rewind, attempt):
+def create_git(project, refurl, cursor, work, rewind):
     """Get a safe COW git checkout of the named refurl."""
 
     conflict = False
@@ -127,95 +114,11 @@ def create_git(project, refurl, cursor, worker, ident, number, workname,
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     l = p.stdout.readline()
     while l:
-        log(cursor, worker, ident, number, workname, attempt, l)
+        work.log(cursor, wl)
         if l.find('CONFLICT') != -1:
             conflict = True
         l = p.stdout.readline()
     return visible_dir, conflict
-
-
-def queue_work(cursor, ident, number, workname, attempt=0):
-    cursor.execute('insert ignore into work_queue'
-                   '(id, number, workname, attempt) values '
-                   '("%s", %d, "%s", %s);'
-                   %(ident, number, workname,
-                     format_attempt_insert(attempt)))
-    cursor.execute('commit;')
-
-
-class NoWorkFound(Exception):
-    pass
-
-
-def dequeue_work(cursor, worker):
-    selectid = str(uuid.uuid4())
-    cursor.execute('update work_queue set selectid="%s", worker="%s", '
-                   'heartbeat = NOW() where selectid is NULL limit 1;'
-                   %(selectid, worker))
-    cursor.execute('commit;')
-    cursor.execute('select * from work_queue where selectid="%s";'
-                   % selectid)
-    if cursor.rowcount == 0:
-        raise NoWorkFound()
-    row = cursor.fetchone()
-    return (row['id'], row['number'], row['workname'], row['attempt'])
-
-def clear_log(cursor, ident, number, workname, attempt):
-    cursor.execute('delete from work_logs where id="%s" and number=%s and '
-                   'workname="%s" and %s;'
-                   %(ident, number, workname,
-                     format_attempt_criteria(attempt)))
-    print 'Deleted %d old log lines' % cursor.rowcount
-    cursor.execute('commit;')
-
-
-def log(cursor, worker, ident, number, workname, attempt, l):
-    timestamp = datetime.datetime.now()
-    print '%s %s' % (timestamp, l.rstrip())
-    batchlog(cursor, worker, ident, number, workname, attempt,
-             [(timestamp, l)])
-
-
-def batchlog(cursor, worker, ident, number, workname, attempt, entries):
-    logdir = os.path.join('/srv/logs', ident)
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-
-    logpath = os.path.join(logdir,
-                           (str(number) + format_attempt_path(attempt) +
-                            '_' + workname + '.log'))
-
-    with open(logpath, 'a+') as f:
-        sql = ('insert into work_logs(id, number, workname, worker, log, '
-               'timestamp, attempt) values ')
-        values = []
-        for timestamp, log in entries:
-            values.append('("%s", %s, "%s", "%s", "%s", %s, %s)'
-                          %(ident, number, workname, worker,
-                            _mysql.escape_string(log),
-                            datetime_as_sql(timestamp),
-                            format_attempt_insert(attempt)))
-        f.write('%s %s\n' %(timestamp, log.rstrip()))
-
-    sql += ', '.join(values)
-    sql += ';'
-
-    cursor.execute(sql)
-    cursor.execute('commit;')
-
-    if len(entries) > 1:
-        print '%s Pushed %d log lines to server' %(datetime.datetime.now(),
-                                                   len(entries))
-    heartbeat(cursor, worker, ident, number, workname, attempt)
-
-
-def heartbeat(cursor, worker, ident, number, workname, attempt):
-    cursor.execute('update work_queue set heartbeat=NOW() where '
-                   'id="%s" and number=%s and workname="%s" and '
-                   'worker="%s" and %s;'
-                   %(ident, number, workname, worker,
-                     format_attempt_criteria(attempt)))
-    cursor.execute('commit;')
 
 
 def datetime_as_sql(value):
@@ -224,8 +127,7 @@ def datetime_as_sql(value):
               '''%a, %d %b %Y %H:%i:%s'''))
 
 
-def execute(cursor, worker, ident, number, workname, attempt, cmd,
-            timeout=-1):
+def execute(cursor, work, cmd, timeout=-1):
     names = {}
     lines = {}
     syslog = os.open('/var/log/syslog', os.O_RDONLY)
@@ -262,21 +164,21 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd,
             elems = lines[fd].split('\n')
             for l in elems[:-1]:
                 l = '%s%s' %(names[fd], l)
-                log(cursor, worker, ident, number, workname, attempt, l)
+                work.log(cursor, l)
             lines[fd] = elems[-1]
             last_heartbeat = time.time()
 
     phase = 0
     while phase < 2:
         if timeout > 0 and time.time() - start_time > timeout:
-            log(cursor, worker, ident, number, workname, attempt, '[timeout]')
+            work.log(cursor, '[timeout]')
             os.kill(p.pid, 9)
 
         for fd, flag in poll_obj.poll(0):
             process(fd)
 
         if time.time() - last_heartbeat > 30:
-            log(cursor, worker, ident, number, workname, attempt, '[heartbeat]')
+            work.log(cursor, '[heartbeat]')
             last_heartbeat = time.time()
 
         if p.poll() is not None:
@@ -288,34 +190,9 @@ def execute(cursor, worker, ident, number, workname, attempt, cmd,
     for fd in lines:
         if lines[fd]:
             l = '%s%s' %(names[fd], lines[fd])
-            log(cursor, worker, ident, number, workname, attempt, l)
+            work.log(cursor, l)
 
-    log(cursor, worker, ident, number, workname, attempt,
-        '[script exit code = %d]' % p.returncode)
-
-
-def recheck(ident, number, workname=None):
-    cursor = get_cursor()
-    if not workname:
-        cursor.execute('select distinct(workname) from work_queue where '
-                       'id="%s" and number=%s;'
-                       %(ident, number))
-        for row in cursor:
-            recheck(ident, number, workname=row['workname'])
-        return
-
-    cursor.execute('select max(attempt) from work_queue where id="%s" and '
-                   'number=%s and workname="%s";'
-                   %(ident, number, workname))
-    row = cursor.fetchone()
-    attempt = row['max(attempt)']
-    attempt += 1
-
-    cursor.execute('insert into work_queue(id, number, workname, attempt) '
-                   'values ("%s", %s, "%s", %s);'
-                   %(ident, number, workname, attempt))
-    cursor.execute('commit;')
-    print 'Added recheck for %s %s %s' %(ident, number, workname)
+    work.log(cursor, '[script exit code = %d]' % p.returncode)
 
 
 def Normalize(value):

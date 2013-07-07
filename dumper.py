@@ -217,9 +217,7 @@ if __name__ == '__main__':
                                   'number=%s and workname="%s" and '
                                   'worker="%s" and %s order by timestamp asc;'
                                   %(row['id'], row['number'], row['workname'],
-                                    row['worker'],
-                                    utils.format_attempt_criteria(
-                                        row['attempt'])))
+                                    row['worker'], row['attempt'])))
                 linecount = 0
                 f.write('<html><head><title>%(id)s -- %(number)s</title>\n'
                         '<link rel="stylesheet" type="text/css" '

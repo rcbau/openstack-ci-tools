@@ -6,6 +6,7 @@ import time
 import utils
 
 
+# TODO(mikal): port these to workunits
 def wait_until_done():
     while True:
         cursor = utils.get_cursor()
@@ -21,7 +22,8 @@ def process_all():
     while True:
         wait_until_done()
         cursor = utils.get_cursor()
-        cursor.execute('update patchsets set state="0" where state="m" and project not like "stackforge/%reddwarf%" limit 100;')
+        cursor.execute('update patchsets set state="0" where state="m" and '
+                       'project not like "stackforge/%reddwarf%" limit 100;')
         try:
             if cursor.rowcount == 0:
                 return

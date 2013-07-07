@@ -6,24 +6,20 @@ import imp
 import os
 import socket
 
+import workunit
 import utils
-
-# Valid work done statuses:
-#    y = work done
-#    m = plugin not found
-#    c = git conflict during checkout
 
 
 if __name__ == '__main__':
     cursor = utils.get_cursor()
     worker = socket.gethostname()
+    constraints = utils.get_config.get(constraints, '')
 
     try:
         while True:
-            (ident, number, workname, attempt) = utils.dequeue_work(cursor,
-                                                                    worker)
+            work = workunit.dequeue_work(cursor, worker, constraints)
             print '=========================================================='
-            utils.clear_log(cursor, ident, number, workname, attempt)
+            work.clear_log(cursor)
 
             # Checkout the patchset
             change = utils.get_patchset_details(cursor, ident, number)
@@ -33,27 +29,17 @@ if __name__ == '__main__':
             while conflict and rewind < 10:
                 git_repo, conflict = utils.create_git(change['project'],
                                                       change['refurl'],
-                                                      cursor, worker, ident,
-                                                      number, workname, rewind,
-                                                      attempt)
+                                                      cursor, work, rewind)
                 if conflict:
-                    utils.log(cursor, worker, ident, number, workname, attempt,
-                              'Git merge failure with HEAD~%d' % rewind)
+                    work.log(cursor, 'Git merge failure with HEAD~%d' % rewind)
                     rewind += 1
 
             if conflict:
-                utils.log(cursor, worker, ident, number, workname, attempt,
-                          'Git merge failure detected')
-                cursor.execute('update work_queue set done="c" '
-                               'where id="%s" and number=%s and workname="%s" '
-                               'and %s;'
-                               % (ident, number, workname,
-                                  utils.format_attempt_criteria(attempt)))
-                cursor.execute('commit;')
+                work.log(cursor, 'Git merge failure detected')
+                work.set_conflict(cursor)
                 continue
 
-            utils.log(cursor, worker, ident, number, workname, attempt,
-                      'Git checkout created')
+            work.log(cursor, 'Git checkout created')
 
             # Load plugins
             plugins = []
@@ -64,28 +50,15 @@ if __name__ == '__main__':
 
             handled = False
             for plugin in plugins:
-                handled = plugin.ExecuteWork(cursor, ident, number, workname,
-                                             worker, attempt, git_repo, change)
+                handled = plugin.ExecuteWork(cursor, work, git_repo, change)
                 if handled:
-                    cursor.execute('update work_queue set done="y" '
-                                   'where id="%s" and '
-                                   'number=%s and workname="%s" '
-                                   'and %s;'
-                                  % (ident, number, workname,
-                                     utils.format_attempt_criteria(attempt)))
-                    cursor.execute('commit;')
-                    print 'Marked %s %s %s (%s) done' %(ident, number, workname, attempt)
+                    work.set_done(cursor)
                     break
 
             if not handled:
-                utils.log(cursor, worker, ident, number, workname, attempt,
-                          'No plugin found for work of %s type' % workname)
-                cursor.execute('update work_queue set done="m" where '
-                               'id="%s" and number=%s and workname="%s" and '
-                               '%s;'
-                               % (ident, number, workname,
-                                  utils.format_attempt_criteria(attempt)))
-                cursor.execute('commit;')
+                work.log(cursor,
+                         'No plugin found for work of %s type' % workname)
+                work.set_missing(cursor)
 
-    except utils.NoWorkFound:
+    except workunit.NoWorkFound:
         pass
