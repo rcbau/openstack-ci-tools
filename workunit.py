@@ -232,7 +232,7 @@ class WorkUnit(object):
         return os.path.join('/var/www/ci', self._unique_path())
 
     def url(self, attempt=None):
-        return os.path.join('http://openstack.stillhq.com',
+        return os.path.join('http://openstack.stillhq.com/ci',
                             self._unique_path(attempt=attempt))
 
     def persist_to_disk(self, cursor):
