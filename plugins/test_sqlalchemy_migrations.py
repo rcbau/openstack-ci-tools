@@ -46,7 +46,7 @@ def Handle(change, files):
                 w = workunit.WorkUnit(change['id'], change['number'],
                                       'sqlalchemy_migration_%s' % dataset,
                                       0, constraint)
-                w.enqueue_work(cursor)
+                w.enqueue(cursor)
 
 
 MIGRATION_NAME_RE = re.compile('([0-9]+)_(.*)\.py')
