@@ -102,37 +102,40 @@ def write_index(sql, filename):
                         color = data.get('color', '')
                         f.write('<tr %s><td><b>%s</b> ['
                                 '<a href="%s/log.html">log</a>]'
-                                '<font size="-1"><ul>'
+                                '<font size="-1">'
                                 %(color, work.constraints, work.url()))
 
                         if data.get('result', ''):
-                            f.write('<br/><b>%s</b><br/>'
+                            f.write('<br/>&nbsp;&nbsp;<b>%s</b><br/>'
                                     % data.get('result', ''))
 
                         for upgrade in data['order']:
-                            f.write('<br/>%s: %s' %(upgrade,
-                                                    data['details'][upgrade]))
+                            f.write('<br/>&nbsp;&nbsp;%s: %s'
+                                    %(upgrade, data['details'][upgrade]))
 
                         if data.get('final_schema_version', ''):
-                            f.write('<br/>Final schema version: %s'
+                            f.write('<br/>&nbsp;&nbsp;'
+                                    'Final schema version: %s'
                                     % data.get('final_schema_version'))
                         if data.get('expected_final_schema_version', ''):
-                            f.write('<br/>Expected schema version: %s'
+                            f.write('<br/>&nbsp;&nbsp;'
+                                    'Expected schema version: %s'
                                     % data.get('expected_final_schema_version'))
 
                         cursor.execute('select * from work_queue where id="%s" '
                                        'and number=%s and workname="%s";'
                                        %(key[0], key[1], test))
                         row = cursor.fetchone()
-                        f.write('<br/>Run at %s' % row['heartbeat'])
+                        f.write('<br/>&nbsp;&nbsp;Run at %s'
+                                % row['heartbeat'])
 
                         if work.attempt > 0:
-                            f.write('<br/><br/>Other attempts: ')
+                            f.write('<br/><br/>&nbsp;&nbsp;Other attempts: ')
                             for i in range(0, work.attempt):
                                 f.write('<a href="%s/log.html">%s</a> '
                                         %(work.url(attempt=i), i))
 
-                        f.write('</ul></font></td></tr>')
+                        f.write('</font></td></tr>')
                     else:
                         f.write('<tr><td>&nbsp;</td></tr>')
                 f.write('</table></td>')
