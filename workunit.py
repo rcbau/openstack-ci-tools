@@ -367,10 +367,14 @@ class WorkUnit(object):
                 print '    %s (%s)' %(upgrade,
                                       upgrade_times[upgrade].seconds)
                 if upgrade == 'patchset':
-                    if upgrade_times[upgrade].seconds > 30:
+                    if upgrade_times[upgrade].seconds > 120:
                         data['color'] = 'bgcolor="#FA5858"'
                         data['result'] = 'Failed: patchset too slow'
                         print '        Failed'
+                    elif upgrade_times[upgrade].seconds > 30:
+                        data['color'] = 'bgcolor="#FA8258"'
+                        data['result'] = 'Warning: patchset slow'
+                        print '        Warning'
 
             if final_version:
                 subcursor.execute('select max(migration) from '
