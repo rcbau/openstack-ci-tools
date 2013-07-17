@@ -43,6 +43,7 @@ MIGRATION_END_RE = re.compile('^done$')
 FINAL_VERSION_RE = re.compile('Final schema version is ([0-9]+)')
 MIGRATION_CLASH_RE = re.compile('Error: migration number .* appears '
                                 'more than once')
+GIT_CHECKOUT_FAILED_RE = re.compile('Git merge failure detected')
 
 
 class NoWorkFound(Exception):
@@ -294,6 +295,12 @@ class WorkUnit(object):
                     data['color'] = 'bgcolor="#FA5858"'
                     data['result'] = 'Failed: migration number clash'
                     print '    Failed'
+
+                m = GIT_CHECKOUT_FAILED_RE.match(logrow['log'])
+                if m:
+                    data['color'] = 'bgcolor="#F4FA58"'
+                    data['result'] = 'Warning: merge failure'
+                    print '    Warning'
 
                 line = ('<a name="%(linenum)s"></a>'
                         '<a href="#%(linenum)s">#</a> '
