@@ -78,21 +78,20 @@ def write_index(sql, filename):
                            'number=%s order by timestamp desc limit 1;'
                            %(key[0], key[1]))
             row = cursor.fetchone()
-            f.write('<tr%(color)s><td>'
-                    '<a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
-                    '<font size="-1">%(proj)s at %(timestamp)s<br/>'
-                    '<a href="%(url)s">%(subj)s by %(who)s</a><br/>'
-                    '</font></td>'
-                    % {'color': row_colors[row_count % 2],
-                       'id': key[0],
-                       'num': key[1],
-                       'proj': row['project'],
-                       'timestamp': row['timestamp'],
-                       'subj': row['subject'],
-                       'who': row['owner_name'],
-                       'url': row['url']})
+            out = ('<td>'
+                   '<a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
+                   '<font size="-1">%(proj)s at %(timestamp)s<br/>'
+                   '<a href="%(url)s">%(subj)s by %(who)s</a><br/>'
+                   '</font></td>'
+                   % {'id': key[0],
+                      'num': key[1],
+                      'proj': row['project'],
+                      'timestamp': row['timestamp'],
+                      'subj': row['subject'],
+                      'who': row['owner_name'],
+                      'url': row['url']})
             for test in test_names:
-                f.write('<td><table>')
+                out += '<td><table>'
                 for work in workunit.find_latest_attempts(cursor, key[0],
                                                           key[1], test):
                     test_dir = work.disk_path()
@@ -100,25 +99,25 @@ def write_index(sql, filename):
                         with open(os.path.join(test_dir, 'data'), 'r') as d:
                             data = json.loads(d.read())
                         color = data.get('color', '')
-                        f.write('<tr %s><td><b>%s</b> ['
+                        out += ('<tr %s><td><b>%s</b> ['
                                 '<a href="%s/log.html">log</a>]'
                                 '<font size="-1">'
                                 %(color, work.constraints, work.url()))
 
                         if data.get('result', ''):
-                            f.write('<br/>&nbsp;&nbsp;<b>%s</b><br/>'
+                            out += ('<br/>&nbsp;&nbsp;<b>%s</b><br/>'
                                     % data.get('result', ''))
 
                         for upgrade in data['order']:
-                            f.write('<br/>&nbsp;&nbsp;%s: %s'
+                            out += ('<br/>&nbsp;&nbsp;%s: %s'
                                     %(upgrade, data['details'][upgrade]))
 
                         if data.get('final_schema_version', ''):
-                            f.write('<br/>&nbsp;&nbsp;'
+                            out += ('<br/>&nbsp;&nbsp;'
                                     'Final schema version: %s'
                                     % data.get('final_schema_version'))
                         if data.get('expected_final_schema_version', ''):
-                            f.write('<br/>&nbsp;&nbsp;'
+                            out += ('<br/>&nbsp;&nbsp;'
                                     'Expected schema version: %s'
                                     % data.get('expected_final_schema_version'))
 
@@ -126,21 +125,27 @@ def write_index(sql, filename):
                                        'and number=%s and workname="%s";'
                                        %(key[0], key[1], test))
                         row = cursor.fetchone()
-                        f.write('<br/>&nbsp;&nbsp;Run at %s'
+                        out += ('<br/>&nbsp;&nbsp;Run at %s'
                                 % row['heartbeat'])
 
                         if work.attempt > 0:
-                            f.write('<br/><br/>&nbsp;&nbsp;Other attempts: ')
+                            out += ('<br/><br/>&nbsp;&nbsp;Other attempts: ')
                             for i in range(0, work.attempt):
-                                f.write('<a href="%s/log.html">%s</a> '
+                                out += ('<a href="%s/log.html">%s</a> '
                                         %(work.url(attempt=i), i))
 
-                        f.write('</font></td></tr>')
+                        out += ('</font></td></tr>')
                     else:
-                        f.write('<tr><td>&nbsp;</td></tr>')
-                f.write('</table></td>')
+                        out += ('<tr><td>&nbsp;</td></tr>')
+                out += ('</table></td>')
 
-            f.write('</tr>\n')
+            with open(os.path.join('/var/www/ci', key[0], str(key[1]),
+                                   'index.html'), 'w') as idx:
+                idx.write('<table><tr>%s</tr></table>' % out)
+
+            f.write('<tr%(color)s>%(out)s</tr>\n'
+                    %{'color': row_colors[row_count % 2],
+                      'out': out})
             row_count += 1
         f.write('</table></body></html>')
 
