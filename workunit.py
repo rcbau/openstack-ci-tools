@@ -252,6 +252,8 @@ class WorkUnit(object):
         datapath = os.path.join(path, 'data')
         workerpath = os.path.join(path, 'worker')
 
+        outcome = 'Passed'
+
         print path
         if not os.path.exists(path):
             os.makedirs(path)
@@ -295,12 +297,14 @@ class WorkUnit(object):
                     data['color'] = 'bgcolor="#FA5858"'
                     data['result'] = 'Failed: migration number clash'
                     print '    Failed'
+                    outcome = 'Failed'
 
                 m = GIT_CHECKOUT_FAILED_RE.match(logrow['log'])
                 if m:
                     data['color'] = 'bgcolor="#F4FA58"'
                     data['result'] = 'Warning: merge failure'
                     print '    Warning'
+                    outcome = 'Warning'
 
                 line = ('<a name="%(linenum)s"></a>'
                         '<a href="#%(linenum)s">#</a> '
@@ -378,10 +382,13 @@ class WorkUnit(object):
                         data['color'] = 'bgcolor="#FA5858"'
                         data['result'] = 'Failed: patchset too slow'
                         print '        Failed'
+                        outcome = 'Failed'
+
                     elif upgrade_times[upgrade].seconds > 30:
                         data['color'] = 'bgcolor="#FA8258"'
                         data['result'] = 'Warning: patchset slow'
                         print '        Warning'
+                        outcome = 'Warning'
 
             if final_version:
                 subcursor.execute('select max(migration) from '
@@ -395,6 +402,7 @@ class WorkUnit(object):
                     data['color'] = 'bgcolor="#FA5858"'
                     data['result'] = 'Failed: incorrect final version'
                     print '        Failed'
+                    outcome = 'Failed'
 
             f.write('<ul>%s</ul>' % ('\n'.join(display_upgrades)))
             f.write('<pre><code>\n')
@@ -403,6 +411,16 @@ class WorkUnit(object):
 
             with open(datapath, 'w') as d:
                 d.write(json.dumps(data))
+
+            subcursor.execute('update work_queue set outcome="%s" '
+                              'where id="%s" and number=%s '
+                              'and workname="%s" and constraints="%s" and '
+                              'attempt=%s;'
+                              %(outcome, self.ident, self.number,
+                                self.workname, self.constraints,
+                                self.attempt))
+            subcursor.execute('commit;')
+
 
     def mark_dumped(self, cursor):
         cursor.execute('update work_queue set dumped="y" where '
