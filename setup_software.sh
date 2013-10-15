@@ -24,3 +24,10 @@ chown -R mysql.mysql /srv/mysql
 
 /etc/init.d/apparmor restart
 /etc/init.d/mysql restart
+
+# Cleanup git checkouts
+for dir in `find /srv/git-checkouts/openstack/ -maxdepth 1 -mtime +14 | grep nova_refs`
+do
+  echo "Cleanup $dir"
+  rm -rf $dir
+done
