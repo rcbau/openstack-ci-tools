@@ -19,18 +19,6 @@ NEW_RESULT_EMAIL = """Results for a test are available.
 """
 
 
-def timedelta_as_str(delta):
-    seconds = delta.days * (24 * 60 * 60)
-    seconds += delta.seconds
-
-    if seconds < 60:
-        return '%d seconds' % seconds
-
-    remainder = seconds % 60
-    return '%d minutes, %d seconds' %((seconds - remainder) / 60,
-                                      remainder)
-
-
 def test_name_as_display(test):
     return test.replace('sqlalchemy_migration_nova', 'nova upgrade').\
                 replace('_', ' ')
@@ -90,74 +78,74 @@ def write_index(sql, filename):
                            'number=%s order by timestamp desc limit 1;'
                            %(key[0], key[1]))
             row = cursor.fetchone()
-            f.write('<tr%(color)s><td>'
-                    '<a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
-                    '<font size="-1">%(proj)s at %(timestamp)s<br/>'
-                    '<a href="%(url)s">%(subj)s by %(who)s</a><br/>'
-                    '</font></td>'
-                    % {'color': row_colors[row_count % 2],
-                       'id': key[0],
-                       'num': key[1],
-                       'proj': row['project'],
-                       'timestamp': row['timestamp'],
-                       'subj': row['subject'],
-                       'who': row['owner_name'],
-                       'url': row['url']})
+            out = ('<td>'
+                   '<a href="%(id)s/%(num)s">%(id)s #%(num)s</a><br/>'
+                   '<font size="-1">%(proj)s at %(timestamp)s<br/>'
+                   '<a href="%(url)s">%(subj)s by %(who)s</a><br/>'
+                   '</font></td>'
+                   % {'id': key[0],
+                      'num': key[1],
+                      'proj': row['project'],
+                      'timestamp': row['timestamp'],
+                      'subj': row['subject'],
+                      'who': row['owner_name'],
+                      'url': row['url']})
             for test in test_names:
-                test_dir = os.path.join('/var/www/ci', key[0], str(key[1]),
-                                        test)
+                out += '<td><table>'
+                for work in workunit.find_latest_attempts(cursor, key[0],
+                                                          key[1], test):
+                    test_dir = work.disk_path()
+                    if os.path.exists(test_dir):
+                        with open(os.path.join(test_dir, 'data'), 'r') as d:
+                            data = json.loads(d.read())
+                        color = data.get('color', '')
+                        out += ('<tr %s><td><b>%s</b> ['
+                                '<a href="%s/log.html">log</a>]'
+                                '<font size="-1">'
+                                %(color, work.constraints, work.url()))
 
-                # Find attempts
-                attempt = 0
-                while os.path.exists(test_dir +
-                                     utils.format_attempt_path(attempt)):
-                    attempt += 1
-                attempt -= 1
+                        if data.get('result', ''):
+                            out += ('<br/>&nbsp;&nbsp;<b>%s</b><br/>'
+                                    % data.get('result', ''))
 
-                if attempt > 0:
-                    test_dir += utils.format_attempt_path(attempt)
+                        for upgrade in data['order']:
+                            out += ('<br/>&nbsp;&nbsp;%s: %s'
+                                    %(upgrade, data['details'][upgrade]))
 
-                if os.path.exists(test_dir):
-                    with open(os.path.join(test_dir, 'data'), 'r') as d:
-                        data = json.loads(d.read())
-                    color = data.get('color', '')
-                    f.write('<td %s><a href="%s/%s/%s%s/log.html">log</a>'
-                            '<font size="-1">'
-                            %(color, key[0], key[1], test,
-                              utils.format_attempt_path(attempt)))
+                        if data.get('final_schema_version', ''):
+                            out += ('<br/>&nbsp;&nbsp;'
+                                    'Final schema version: %s'
+                                    % data.get('final_schema_version'))
+                        if data.get('expected_final_schema_version', ''):
+                            out += ('<br/>&nbsp;&nbsp;'
+                                    'Expected schema version: %s'
+                                    % data.get('expected_final_schema_version'))
 
-                    if data.get('result', ''):
-                        f.write('<br/><b>%s</b><br/>'
-                                % data.get('result', ''))
+                        cursor.execute('select * from work_queue where id="%s" '
+                                       'and number=%s and workname="%s";'
+                                       %(key[0], key[1], test))
+                        row = cursor.fetchone()
+                        out += ('<br/>&nbsp;&nbsp;Run at %s'
+                                % row['heartbeat'])
 
-                    for upgrade in data['order']:
-                        f.write('<br/>%s: %s' %(upgrade,
-                                                data['details'][upgrade]))
+                        if work.attempt > 0:
+                            out += ('<br/><br/>&nbsp;&nbsp;Other attempts: ')
+                            for i in range(0, work.attempt):
+                                out += ('<a href="%s/log.html">%s</a> '
+                                        %(work.url(attempt=i), i))
 
-                    if data.get('final_schema_version', ''):
-                        f.write('<br/>Final schema version: %s'
-                                % data.get('final_schema_version'))
-                    if data.get('expected_final_schema_version', ''):
-                        f.write('<br/>Expected schema version: %s'
-                                % data.get('expected_final_schema_version'))
+                        out += ('</font></td></tr>')
+                    else:
+                        out += ('<tr><td>&nbsp;</td></tr>')
+                out += ('</table></td>')
 
-                    cursor.execute('select * from work_queue where id="%s" '
-                                   'and number=%s and workname="%s";'
-                                   %(key[0], key[1], test))
-                    row = cursor.fetchone()
-                    f.write('<br/>Run at %s' % row['heartbeat'])
+            with open(os.path.join('/var/www/ci', key[0], str(key[1]),
+                                   'index.html'), 'w') as idx:
+                idx.write('<table><tr>%s</tr></table>' % out)
 
-                    if attempt > 0:
-                        f.write('<br/><br/>Other attempts: ')
-                        for i in range(0, attempt):
-                            f.write('<a href="%s/%s/%s%s/log.html">%s</a> '
-                                    %(key[0], key[1], test,
-                                      utils.format_attempt_path(i), i))
-
-                    f.write('</font></td>')
-                else:
-                    f.write('<td>&nbsp;</td>')
-            f.write('</tr>\n')
+            f.write('<tr%(color)s>%(out)s</tr>\n'
+                    %{'color': row_colors[row_count % 2],
+                      'out': out})
             row_count += 1
         f.write('</table></body></html>')
 
@@ -169,11 +157,14 @@ if __name__ == '__main__':
     subcursor = utils.get_cursor()
 
     # Write out individual work logs
-    cursor.execute('select * from work_queue where done is not null;')
+    cursor.execute('select * from work_queue where done is not null '
+                   'and dumped is null;')
     for row in cursor:
-        work = workunit.WorkUnit(row['ident'], row['number'],
-                                 row['constraints'], row['attempt'])
+        work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
+                                 row['attempt'], row['constraints'])
+        work.worker = row['worker']
         work.persist_to_disk(subcursor)
+        work.mark_dumped(subcursor)
 
     # Write out an index file
     write_index('select * from work_queue order by heartbeat desc limit 100;',
@@ -194,63 +185,65 @@ if __name__ == '__main__':
                        %(ident, number))
         row = cursor.fetchone()
         if row['count(*)'] > 0:
-            print '    %s #%s not complete' %(ident, number)
+            print '%s #%s not complete' %(ident, number)
             continue
 
         # If we get here, then we owe people an email about a complete run of
         # tests
         results = {}
         cursor.execute('select * from work_queue where id="%s" and number=%s '
-                       'and done="y";'
+                       'and done is not null;'
                        %(ident, number))
         for row in cursor:
-            results.setdefault(row['workname'], {})
-            results[row['workname']].setdefault(row['attempt'], [])
-            results[row['workname']][row['attempt']].append(
+            work = workunit.WorkUnit(row['id'], row['number'], row['workname'],
+                                     row['attempt'], row['constraints'])
+
+            results.setdefault((row['workname'], row['constraints']), {})
+            results[(row['workname'],
+                     row['constraints'])].setdefault(row['attempt'], [])
+            results[(row['workname'],
+                     row['constraints'])][row['attempt']].append(
                           '%s attempt %s:'
                           %(test_name_as_display(row['workname']),
                             row['attempt']))
-            try:
-                with open('/var/www/ci/%s/%s/%s/data'
-                          %(row['id'], row['number'], row['workname'])) as f:
-                     data = json.loads(f.read())
+            with open(os.path.join(work.disk_path(), 'data')) as f:
+                data = json.loads(f.read())
 
-                     if data.get('result', ''):
-                         results[row['workname']][row['attempt']].append(
-                           '    %s' % data.get('result', ''))
+                if data.get('result', ''):
+                    results[(row['workname'],
+                             row['constraints'])][row['attempt']].append(
+                                 '    %s' % data.get('result', ''))
 
-                     for upgrade in data['order']:
-                         results[row['workname']][row['attempt']].append(
-                           '    %s: %s' %(upgrade,
-                                          data['details'][upgrade]))
-            except Exception, e:
-                print 'Error: %s' % e
+                for upgrade in data['order']:
+                    results[(row['workname'],
+                             row['constraints'])][row['attempt']].append(
+                                 '    %s: %s' %(upgrade,
+                                                data['details'][upgrade]))
 
-            url = ('http://openstack.stillhq.com/ci/%s/%s/%s%s/log.html'
-                   %(row['id'], row['number'], row['workname'],
-                     utils.format_attempt_path(row['attempt'])))
-            results[row['workname']][row['attempt']].append(
-                          '    Log URL: %s' % url)
-            results[row['workname']][row['attempt']].append('')
+            results[(row['workname'],
+                     row['constraints'])][row['attempt']].append(
+                          '    Log URL: %s' % work.url())
+            results[(row['workname'],
+                     row['constraints'])][row['attempt']].append('')
 
         result = []
-        for workname in sorted(results.keys()):
-            attempt = max(results[workname].keys())
-            for line in results[workname][attempt]:
+        for workname, constraint in sorted(results.keys()):
+            attempt = max(results[(workname, constraint)].keys())
+            for line in results[(workname, constraint)][attempt]:
                 result.append(line)
 
-        print 'Emailing %s #%s' %(row['id'], row['number'])
-        utils.send_email('Patchset %s #%s' %(row['id'], row['number']),
+        print 'Emailing %s #%s' %(ident, number)
+        utils.send_email('Patchset %s #%s' %(ident, number),
                          'ci@lists.stillhq.com',
                          NEW_RESULT_EMAIL
                          % {'results': '\n'.join(result)})
 
-        for workname in results:
-            for attempt in results[workname]:
+        for workname, constraints in results:
+            for attempt in results[(workname, constraints)]:
                 subcursor.execute('update work_queue set emailed = "y" where '
                                   'id="%s" and number=%s and workname="%s" '
-                                  'and attempt=%s;'
-                                  %(row['id'], row['number'], workname,
+                                  'and constraints="%s" and attempt>=%s;'
+                                  %(ident, number, workname, constraints,
                                     attempt))
         subcursor.execute('commit;')
 

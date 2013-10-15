@@ -42,11 +42,11 @@ def Handle(change, files):
         cursor = utils.get_cursor()
         for dataset in ['nova_trivial_500', 'nova_trivial_6000',
                         'nova_user_001']:
-            for constraint in ['mysql']:
+            for constraint in ['mysql', 'percona']:
                 w = workunit.WorkUnit(change['id'], change['number'],
                                       'sqlalchemy_migration_%s' % dataset,
                                       0, constraint)
-                w.enqueue_work(cursor)
+                w.enqueue(cursor)
 
 
 MIGRATION_NAME_RE = re.compile('([0-9]+)_(.*)\.py')

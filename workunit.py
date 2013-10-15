@@ -5,7 +5,9 @@
 # All code for the work_queue and work_logs tables should reside here.
 
 
+import cgi
 import datetime
+import json
 import _mysql
 import os
 import re
@@ -41,6 +43,7 @@ MIGRATION_END_RE = re.compile('^done$')
 FINAL_VERSION_RE = re.compile('Final schema version is ([0-9]+)')
 MIGRATION_CLASH_RE = re.compile('Error: migration number .* appears '
                                 'more than once')
+GIT_CHECKOUT_FAILED_RE = re.compile('Git merge failure detected')
 
 
 class NoWorkFound(Exception):
@@ -94,6 +97,23 @@ def recheck(cursor, ident, number, workname=None):
         cursor.execute('commit;')
         print 'Added recheck for %s %s %s %s' %(ident, number, workname,
                                                 constraint)
+
+
+def find_latest_attempts(cursor, ident, number, workname):
+    constraints = []
+    cursor.execute('select distinct(constraints) from work_queue where '
+                   'id="%s" and number=%s and workname="%s";'
+                   %(ident, number, workname))
+    for row in cursor:
+        constraints.append(row['constraints'])
+
+    for constraint in constraints:
+        cursor.execute('select max(attempt) from work_queue where id="%s" and '
+                       'number=%s and workname="%s" and constraints="%s";'
+                       %(ident, number, workname, constraint))
+        row = cursor.fetchone()
+        yield WorkUnit(ident, number, workname, row['max(attempt)'],
+                       constraint)
 
 
 class WorkUnit(object):
@@ -199,28 +219,46 @@ class WorkUnit(object):
                        %(self.ident, self.number, migration, name))
         cursor.execute('commit;')
 
-    def disk_path(self):
-        path = os.path.join('/var/www/ci', self.ident, self.number,
-                            self.workname)
+    def _unique_path(self, attempt=None):
+        if not attempt:
+            attempt = self.attempt
+
+        path = os.path.join(self.ident, str(self.number), self.workname)
         if self.constraints != 'mysql':
             path += '_%s' % self.constraints
-        path += utils.format_attempt_path(row['attempt'])
+        path += utils.format_attempt_path(attempt)
         return path
 
+    def disk_path(self):
+        return os.path.join('/var/www/ci', self._unique_path())
+
+    def url(self, attempt=None):
+        return os.path.join('http://openstack.stillhq.com/ci',
+                            self._unique_path(attempt=attempt))
+
     def persist_to_disk(self, cursor):
+        cursor.execute('select * from work_queue where id="%s" and number=%s '
+                       'and workname="%s" and constraints="%s" and '
+                       'attempt=%s;'
+                       %(self.ident, self.number, self.workname,
+                         self.constraints, self.attempt))
+        row = cursor.fetchone()
+        if row['dumped'] == 'y':
+            return
+
         subcursor = utils.get_cursor()
-        
+
         path = self.disk_path()
         datapath = os.path.join(path, 'data')
         workerpath = os.path.join(path, 'worker')
+
+        outcome = 'Passed'
 
         print path
         if not os.path.exists(path):
             os.makedirs(path)
         with open(workerpath, 'w') as f:
-            f.write(row['worker'])
-        with open(os.path.join(path, 'state'), 'w') as f:
-            f.write(row['done'])
+            f.write(self.worker)
         with open(os.path.join(path, 'log.html'), 'w') as f:
             buffered = []
             upgrades = []
@@ -236,8 +274,8 @@ class WorkUnit(object):
                            %(self.ident, self.number, self.workname,
                              self.worker, self.constraints, self.attempt))
             linecount = 0
-            f.write(LOG_HEADER %{'id': row['id'],
-                                 'number': row['number']})
+            f.write(LOG_HEADER %{'id': self.ident,
+                                 'number': self.number})
 
             data = {}
             for logrow in cursor:
@@ -259,6 +297,14 @@ class WorkUnit(object):
                     data['color'] = 'bgcolor="#FA5858"'
                     data['result'] = 'Failed: migration number clash'
                     print '    Failed'
+                    outcome = 'Failed'
+
+                m = GIT_CHECKOUT_FAILED_RE.match(logrow['log'])
+                if m:
+                    data['color'] = 'bgcolor="#F4FA58"'
+                    data['result'] = 'Warning: merge failure'
+                    print '    Warning'
+                    outcome = 'Warning'
 
                 line = ('<a name="%(linenum)s"></a>'
                         '<a href="#%(linenum)s">#</a> '
@@ -276,7 +322,7 @@ class WorkUnit(object):
                 if m and migration_start:
                     elapsed = logrow['timestamp'] - migration_start
                     cleaned += ('              <font color="red">[%s]</font>'
-                                % timedelta_as_str(elapsed))
+                                % utils.timedelta_as_str(elapsed))
                     migration_start = None
 
                 m = MIGRATION_START_RE.match(cleaned)
@@ -285,8 +331,7 @@ class WorkUnit(object):
                     subcursor.execute('select * from patchset_migrations '
                                       'where id="%s" and number=%s and '
                                       'migration=%s;'
-                                      %(row['id'], row['number'],
-                                        m.group(2)))
+                                      %(self.ident, self.number, m.group(2)))
                     subrow = subcursor.fetchone()
                     if subrow:
                         cleaned += ('     <font color="red">[%s]</font>'
@@ -306,7 +351,7 @@ class WorkUnit(object):
                 if m:
                     in_upgrade = False
                     elapsed = logrow['timestamp'] - upgrade_start
-                    elapsed_str = timedelta_as_str(elapsed)
+                    elapsed_str = utils.timedelta_as_str(elapsed)
                     buffered.append('                                   '
                                     '     <font color="red"><b>'
                                     '[%s total]</b></font>\n'
@@ -319,7 +364,7 @@ class WorkUnit(object):
                          'details_seconds': {},
                          'final_schema_version': final_version})
             for upgrade in upgrades:
-                time_str = timedelta_as_str(upgrade_times[upgrade])
+                time_str = utils.timedelta_as_str(upgrade_times[upgrade])
                 display_upgrades.append('<li><a href="#%(name)s">'
                                         'Upgrade to %(name)s -- '
                                         '%(elapsed)s</a>'
@@ -333,16 +378,23 @@ class WorkUnit(object):
                 print '    %s (%s)' %(upgrade,
                                       upgrade_times[upgrade].seconds)
                 if upgrade == 'patchset':
-                    if upgrade_times[upgrade].seconds > 30:
+                    if upgrade_times[upgrade].seconds > 120:
                         data['color'] = 'bgcolor="#FA5858"'
                         data['result'] = 'Failed: patchset too slow'
                         print '        Failed'
+                        outcome = 'Failed'
+
+                    elif upgrade_times[upgrade].seconds > 30:
+                        data['color'] = 'bgcolor="#FA8258"'
+                        data['result'] = 'Warning: patchset slow'
+                        print '        Warning'
+                        outcome = 'Warning'
 
             if final_version:
                 subcursor.execute('select max(migration) from '
                                   'patchset_migrations where id="%s" '
                                   'and number=%s;'
-                                  %(row['id'], row['number']))
+                                  %(self.ident, self.number))
                 subrow = subcursor.fetchone()
                 data['expected_final_schema_version'] = \
                   subrow['max(migration)']
@@ -350,6 +402,7 @@ class WorkUnit(object):
                     data['color'] = 'bgcolor="#FA5858"'
                     data['result'] = 'Failed: incorrect final version'
                     print '        Failed'
+                    outcome = 'Failed'
 
             f.write('<ul>%s</ul>' % ('\n'.join(display_upgrades)))
             f.write('<pre><code>\n')
@@ -358,3 +411,21 @@ class WorkUnit(object):
 
             with open(datapath, 'w') as d:
                 d.write(json.dumps(data))
+
+            subcursor.execute('update work_queue set outcome="%s" '
+                              'where id="%s" and number=%s '
+                              'and workname="%s" and constraints="%s" and '
+                              'attempt=%s;'
+                              %(outcome, self.ident, self.number,
+                                self.workname, self.constraints,
+                                self.attempt))
+            subcursor.execute('commit;')
+
+
+    def mark_dumped(self, cursor):
+        cursor.execute('update work_queue set dumped="y" where '
+                       'id="%s" and number=%s and workname="%s" '
+                       'and constraints="%s" and attempt=%s;'
+                       %(self.ident, self.number, self.workname,
+                         self.constraints, self.attempt))
+        cursor.execute('commit;')
